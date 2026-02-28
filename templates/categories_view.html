@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Categories</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .cat { padding: 0.6rem; border-bottom: 1px solid #eee; }
+    .top { display:flex; justify-content:space-between; align-items:center }
+    button { padding:0.4rem 0.7rem }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <h1>Categories</h1>
+      <div>
+        <button id="btnLogout">Logout</button>
+      </div>
+    </div>
+    <p id="msg">Fetching categories...</p>
+    <div id="list"></div>
+  </div>
+
+  <script>
+    const el = id => document.getElementById(id);
+    // use cookie-based auth; allow browser to send cookies (same-origin)
+    async function fetchCategories() {
+      try {
+        // Parallel fetch categories, user's votes and nominateds to show vote state
+        const [res, votesRes, nomsRes] = await Promise.all([
+          fetch('/categories', { credentials: 'same-origin' }),
+          fetch('/votes', { credentials: 'same-origin' }).catch(() => ({ ok: false })),
+          fetch('/nominateds', { credentials: 'same-origin' }).catch(() => ({ ok: false })),
+        ]);
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = '/login/new';
+            return;
+          }
+          const txt = await res.text();
+          el('msg').textContent = 'Failed to load categories: ' + txt;
+          return;
+        }
+        const data = await res.json();
+        let votes = [];
+        let noms = [];
+        if (votesRes && votesRes.ok) {
+          try { votes = await votesRes.json(); } catch(e) { votes = [] }
+        }
+        if (nomsRes && nomsRes.ok) {
+          try { noms = await nomsRes.json(); } catch(e) { noms = [] }
+        }
+        // build maps for quick lookup
+        const votedMap = {};
+        votes.forEach(v => { votedMap[String(v.category_id)] = v.nominated_id });
+        const nominatedById = {};
+        noms.forEach(n => { nominatedById[String(n.id)] = n });
+        el('msg').textContent = '';
+        const list = el('list');
+        list.innerHTML = '';
+        if (!Array.isArray(data) || data.length === 0) {
+          list.textContent = 'No categories yet.';
+          return;
+        }
+        data.forEach(c => {
+          const d = document.createElement('div');
+          d.className = 'cat';
+          // link to nominated list for this category
+          const a = document.createElement('a');
+          a.href = '/nominateds/view?category_id=' + encodeURIComponent(c.id);
+          a.textContent = c.name;
+          a.style.cursor = 'pointer';
+          d.appendChild(a);
+          // if user already voted in this category, show nominated name
+          const votedNomId = votedMap[String(c.id)];
+          if (votedNomId) {
+            const nom = nominatedById[String(votedNomId)];
+            const span = document.createElement('span');
+            span.style.marginLeft = '0.5rem';
+            span.style.fontSize = '0.95rem';
+            span.style.color = '#064e3b';
+            span.textContent = nom ? ' — you voted: ' + nom.name : ' — you voted';
+            d.appendChild(span);
+          }
+          list.appendChild(d);
+        });
+      } catch (err) {
+        el('msg').textContent = 'Error: ' + err.message;
+      }
+    }
+    el('btnLogout').addEventListener('click', async () => {
+      // call server logout to clear HttpOnly cookie
+      await fetch('/logout', { method: 'GET', credentials: 'same-origin' });
+      window.location.href = '/login/new';
+    });
+    fetchCategories();
+  </script>
+</body>
+</html>

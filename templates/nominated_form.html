@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Create Nomination</title>
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 2rem; }
+    label { display:block; margin-top: .5rem }
+    select,input { width: 100%; padding: .5rem; margin-top: .25rem }
+    button { margin-top: 1rem; padding: .5rem 1rem }
+    .container { max-width: 640px; margin: 0 auto }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Nomination</h1>
+    <form id="nomForm">
+      <input type="hidden" id="csrf" name="csrf_token" value="{{.CSRF}}" />
+      <label for="name">Name</label>
+      <input id="name" name="name" required />
+
+      <label for="movie">Movie</label>
+      <select id="movie" name="movie_id" required>
+        <option value="">-- choose movie --</option>
+        {{range .Movies}}
+        <option value="{{.ID}}">{{.Title}}</option>
+        {{end}}
+      </select>
+
+      <label for="category">Category</label>
+      <select id="category" name="category_id" required>
+        <option value="">-- choose category --</option>
+        {{range .Categories}}
+        <option value="{{.ID}}">{{.Name}}</option>
+        {{end}}
+      </select>
+
+      <button type="submit">Create Nomination</button>
+    </form>
+    <div id="msg" role="status" style="margin-top:1rem"></div>
+
+    <script>
+      // submit JSON to /add_nominated using fetch and show a success message
+      document.getElementById('nomForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const movie_id = parseInt(document.getElementById('movie').value, 10);
+        const category_id = parseInt(document.getElementById('category').value, 10);
+        const msg = document.getElementById('msg');
+        msg.textContent = '';
+        try {
+          const csrf = document.getElementById('csrf') && document.getElementById('csrf').value;
+          const res = await fetch('/add_nominated', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+              body: JSON.stringify({ name, movie_id, category_id })
+            });
+          if (!res.ok) {
+            const txt = await res.text();
+            msg.textContent = 'Error: ' + txt;
+            msg.style.color = 'red';
+            return;
+          }
+          const data = await res.json();
+          msg.textContent = 'Created nomination id=' + data.id;
+          msg.style.color = 'green';
+          // clear form
+          document.getElementById('name').value = '';
+          document.getElementById('movie').selectedIndex = 0;
+          document.getElementById('category').selectedIndex = 0;
+        } catch (err) {
+          msg.textContent = 'Network error: ' + err.message;
+          msg.style.color = 'red';
+        }
+      });
+    </script>
+    <p><a href="/nominateds">Back to nominations</a></p>
+  </div>
+</body>
+</html>

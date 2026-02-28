@@ -1,0 +1,142 @@
+{{ define "auth_modal" }}
+<!-- Auth modal partial: supports login and register, dispatches 'auth:login' on successful auth when embedded -->
+<div id="loginModal" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:1rem 1.25rem; border-radius:8px; width:360px; box-shadow:0 6px 24px rgba(0,0,0,0.2);">
+    <h2 id="modalTitle" style="margin-top:0">Sign in</h2>
+    <p id="modalDesc" style="color:#444; margin-top:0.25rem">Sign in to vote or register a new account.</p>
+
+    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+      <button id="tabLogin" type="button" style="flex:1">Login</button>
+      <button id="tabRegister" type="button" style="flex:1">Register</button>
+    </div>
+
+    <form id="authForm" style="margin-top:0.75rem">
+      <div id="boxNickname" style="display:none">
+        <label for="nickname">Nickname (optional)</label>
+        <input id="nickname" name="nickname" type="text" style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+      </div>
+
+      <label for="modal_email">Email</label>
+      <input id="modal_email" name="email" type="email" required style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+
+      <label for="modal_password">Password</label>
+      <input id="modal_password" name="password" type="password" required style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+
+      <div id="boxBio" style="display:none">
+        <label for="bio">Bio (optional)</label>
+        <textarea id="bio" name="bio" rows="3" style="width:100%; padding:0.5rem; margin-top:0.25rem"></textarea>
+      </div>
+
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.75rem">
+        <button id="modalCancel" type="button">Cancel</button>
+        <button id="modalLogin" type="button">Login</button>
+      </div>
+
+      <div id="modalResult" style="margin-top:0.5rem"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+  const modal = el('loginModal');
+  const modalEmail = el('modal_email');
+  const modalPass = el('modal_password');
+  const modalResult = el('modalResult');
+
+  function showModal() {
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    modalEmail.focus();
+  }
+  function hideModal() {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    modalEmail.value = '';
+    modalPass.value = '';
+    modalResult.innerHTML = '';
+  }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(async res => {
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch(e) { json = text; }
+      return { status: res.status, body: json };
+    });
+  }
+
+  let mode = 'login';
+  const updateMode = (m) => {
+    mode = m;
+    el('modalTitle').textContent = m === 'login' ? 'Sign in' : 'Create account';
+    el('modalLogin').textContent = m === 'login' ? 'Login' : 'Register';
+    el('boxNickname').style.display = m === 'register' ? 'block' : 'none';
+    el('boxBio').style.display = m === 'register' ? 'block' : 'none';
+    el('tabLogin').disabled = (m === 'login');
+    el('tabRegister').disabled = (m === 'register');
+  };
+
+  el('tabLogin').addEventListener('click', () => updateMode('login'));
+  el('tabRegister').addEventListener('click', () => updateMode('register'));
+  el('modalCancel').addEventListener('click', () => {
+    hideModal();
+    // release any pending button if page set it
+    if (window.__pendingAuthButton) {
+      try { window.__pendingAuthButton.disabled = false } catch(e){}
+      window.__pendingAuthButton = null;
+    }
+  });
+
+  el('modalLogin').addEventListener('click', async () => {
+    modalResult.innerHTML = '';
+    const email = modalEmail.value.trim();
+    const password = modalPass.value;
+    if (!email || !password) { modalResult.innerHTML = '<div class="msg err">email and password required</div>'; return; }
+    try {
+      if (mode === 'register') {
+        const nick = el('nickname').value.trim() || email.split('@')[0] || email;
+        const bio = el('bio').value || null;
+        const r = await postJson('/register', { nickname: nick, email, password, bio });
+        if (r.status === 201) {
+          // if embedded, notify parent; otherwise redirect like a standalone page
+          if (window.AUTH_MODAL_EMBEDDED) {
+            document.dispatchEvent(new Event('auth:login'));
+            hideModal();
+          } else {
+            window.location.href = '/categories/view';
+          }
+        } else {
+          modalResult.innerHTML = '<div class="msg err">Register failed: ' + JSON.stringify(r.body) + '</div>';
+        }
+      } else {
+        const r = await postJson('/login', { email, password });
+        if (r.status === 200) {
+          if (window.AUTH_MODAL_EMBEDDED) {
+            document.dispatchEvent(new Event('auth:login'));
+            hideModal();
+          } else {
+            window.location.href = '/categories/view';
+          }
+        } else {
+          modalResult.innerHTML = '<div class="msg err">Login failed: ' + JSON.stringify(r.body) + '</div>';
+        }
+      }
+    } catch (err) {
+      modalResult.innerHTML = '<div class="msg err">Error: ' + err.message + '</div>';
+    }
+  });
+
+  // expose show/hide helpers for parent pages
+  window.authModal = { show: showModal, hide: hideModal, setPendingButton: (b) => { window.__pendingAuthButton = b } };
+  // initialize default mode
+  updateMode('login');
+})();
+</script>
+{{ end }}

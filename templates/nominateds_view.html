@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nominated</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .nom { padding: 0.6rem; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center }
+    .top { display:flex; justify-content:space-between; align-items:center }
+    button { padding:0.4rem 0.7rem }
+    .msg { margin-top:1rem; padding:0.6rem; border-radius:6px; }
+    .msg.ok { background:#e6ffed; color:#064e3b; }
+    .msg.err { background:#fff1f2; color:#881337; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <h1 id="title">Nominated</h1>
+      <div>
+        <button id="btnBack">Back</button>
+        <button id="btnLogout">Logout</button>
+      </div>
+    </div>
+    <p id="msg">Loading...</p>
+    <div id="list"></div>
+  </div>
+
+  {{ template "auth_modal" . }}
+
+  <script>
+    const el = id => document.getElementById(id);
+    const params = new URLSearchParams(window.location.search);
+    const categoryId = params.get('category_id');
+    if (!categoryId) {
+      el('msg').textContent = 'category_id missing in query';
+      throw new Error('category_id missing');
+    }
+
+    // use cookie-based auth; call /logout to clear cookie
+    el('btnBack').addEventListener('click', () => window.history.back());
+    el('btnLogout').addEventListener('click', async () => { await fetch('/logout', { method: 'GET', credentials: 'same-origin' }); window.location.href = '/login/new'; });
+
+    // wiring to embedded auth modal
+    let pendingVote = null;
+    let pendingBtn = null;
+    // mark modal as embedded so partial will dispatch events instead of redirecting
+    window.AUTH_MODAL_EMBEDDED = true;
+    document.addEventListener('auth:login', () => {
+      // retry pending vote after successful auth
+      if (pendingVote && pendingBtn) {
+        // small delay to allow cookies to be set
+        setTimeout(() => vote(pendingVote, pendingBtn), 250);
+      }
+    });
+
+    async function fetchNominateds() {
+      try {
+        // fetch nominateds and current user votes so we can mark the selected one
+        const [res, votesRes] = await Promise.all([
+          fetch('/nominateds', { credentials: 'same-origin' }),
+          fetch('/votes', { credentials: 'same-origin' }).catch(() => ({ ok: false }))
+        ]);
+        if (!res.ok) { el('msg').textContent = 'Failed to load nominateds: ' + await res.text(); return; }
+        const data = await res.json();
+        let votes = [];
+        if (votesRes && votesRes.ok) {
+          try { votes = await votesRes.json(); } catch(e) { votes = []; }
+        }
+        // map category -> nominated_id for this user
+        const votedMap = {};
+        if (Array.isArray(votes)) {
+          votes.forEach(v => { votedMap[String(v.category_id)] = v.nominated_id });
+        }
+        const filtered = data.filter(n => String(n.category_id) === String(categoryId));
+        el('msg').textContent = '';
+        const list = el('list');
+        list.innerHTML = '';
+        if (!Array.isArray(filtered) || filtered.length === 0) { list.textContent = 'No nominations for this category.'; return; }
+        filtered.forEach(n => {
+          const d = document.createElement('div');
+          d.className = 'nom';
+          const left = document.createElement('div');
+          left.textContent =  n.name + ' (movie_id=' + n.movie_id + ')';
+          d.appendChild(left);
+          const right = document.createElement('div');
+            const btn = document.createElement('button');
+            // if user already voted in this category, mark the nominated choice
+            if (String(votedMap[String(categoryId)]) === String(n.id)) {
+              btn.textContent = 'Voted';
+              btn.style.background = '#e6ffed';
+              btn.style.color = '#064e3b';
+            } else {
+              btn.textContent = 'Vote';
+            }
+            btn.addEventListener('click', () => vote(n.id, btn));
+            right.appendChild(btn);
+          d.appendChild(right);
+          list.appendChild(d);
+        });
+      } catch (err) {
+        el('msg').textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function getCookie(name) {
+      const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return v ? v.pop() : '';
+    }
+
+    async function vote(nominatedId, btn) {
+      // keep a reference in case we need to show login and retry
+      pendingVote = nominatedId;
+      pendingBtn = btn;
+      btn.disabled = true;
+      try {
+        const csrf = getCookie('csrf_token');
+        const res = await fetch('/add_vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type':'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ nominated_id: nominatedId }) });
+        if (res.status === 201 || res.status === 200) {
+          // success; parse response to detect whether this was a create or update
+          const data = await res.json();
+          const created = !!data.created;
+          el('msg').innerHTML = '<div class="msg ok">' + (created ? 'Voted successfully' : 'Vote updated') + '</div>';
+          pendingVote = null; pendingBtn = null;
+        } else if (res.status === 409) {
+          const txt = await res.text();
+          el('msg').innerHTML = '<div class="msg err">' + txt + '</div>';
+          pendingVote = null; pendingBtn = null;
+        } else if (res.status === 401) {
+          // show embedded login modal and keep pending vote to retry after login
+          pendingVote = nominatedId;
+          pendingBtn = btn;
+          try { window.authModal.setPendingButton(btn); } catch(e) {}
+          try { window.authModal.show(); } catch(e) { window.AUTH_MODAL_EMBEDDED = false; window.location.href = '/login/new' }
+        } else if (res.status === 403) {
+          const txt = await res.text();
+          el('msg').innerHTML = '<div class="msg err">CSRF error: ' + txt + '</div>';
+          // maybe force user to login again
+          pendingVote = nominatedId;
+          pendingBtn = btn;
+          try { window.authModal.setPendingButton(btn); } catch(e) {}
+          try { window.authModal.show(); } catch(e) { window.AUTH_MODAL_EMBEDDED = false; window.location.href = '/login/new' }
+        } else {
+          const txt = await res.text();
+          el('msg').innerHTML = '<div class="msg err">Failed to vote: ' + txt + '</div>';
+          pendingVote = null; pendingBtn = null;
+        }
+      } catch (err) {
+        el('msg').innerHTML = '<div class="msg err">Error: ' + err.message + '</div>';
+        pendingVote = null; pendingBtn = null;
+      } finally {
+        if (!modal || modal.style.display === 'flex') {
+          // leave button disabled while modal is open and pending
+        } else {
+          btn.disabled = false;
+        }
+      }
+    }
+
+    fetchNominateds();
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login / Register</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; }
+    .container { max-width: 520px; margin: 0 auto; }
+    label { display:block; margin-top: 0.75rem; }
+    input, textarea { width:100%; padding:0.5rem; font-size:1rem; }
+    button { margin-top: 1rem; padding: 0.6rem 1rem; font-size:1rem; }
+    .row { display:flex; gap:0.5rem; }
+    .msg { margin-top:1rem; padding:0.6rem; border-radius:6px; }
+    .msg.ok { background:#e6ffed; color:#064e3b; }
+    .msg.err { background:#fff1f2; color:#881337; }
+  </style>
+</head>
+<body>
+  <!-- Modal style container so this page can also be used as a modal
+       when embedded in other views. Uses the same form for login/register. -->
+  {{ template "auth_modal" . }}
+
+  <script>
+    // show auth modal immediately on standalone login page
+    window.AUTH_MODAL_EMBEDDED = false;
+    // small timeout to allow modal script to wire up
+    setTimeout(() => { try { window.authModal.show(); } catch(e){} }, 60);
+  </script>
+</body>
+</html>
