@@ -355,8 +355,27 @@ func (h *Handler) ListNominateds(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// enrich nominateds with the movie title so frontends can show the movie name
+	type nominatedOut struct {
+		ID         int64  `json:"id,omitempty"`
+		MovieID    int64  `json:"movie_id"`
+		CategoryID int64  `json:"category_id"`
+		Name       string `json:"name"`
+		MovieName  string `json:"movie_name,omitempty"`
+	}
+	res := make([]nominatedOut, 0, len(out))
+	for _, n := range out {
+		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
+		// attempt to fetch movie title; if it fails keep MovieName empty
+		if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
+			no.MovieName = m.Title
+		}
+		res = append(res, no)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 // GetNominated handles GET /nominateds?id=<id>

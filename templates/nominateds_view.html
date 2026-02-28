@@ -5,14 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Nominated</title>
   <style>
-    body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; }
-    .container { max-width: 800px; margin: 0 auto; }
-    .nom { padding: 0.6rem; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center }
+  :root{ --muted:#9ca3af; --accent:#f3f4f6; --card-shadow: 0 8px 24px rgba(0,0,0,0.6); --background:#0b0b0d; --card-bg:#0f1724; }
+  body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; background:var(--background); color:var(--accent) }
+    .container { max-width: 1000px; margin: 0 auto; }
     .top { display:flex; justify-content:space-between; align-items:center }
-    button { padding:0.4rem 0.7rem }
+    button { padding:0.45rem 0.85rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
     .msg { margin-top:1rem; padding:0.6rem; border-radius:6px; }
     .msg.ok { background:#e6ffed; color:#064e3b; }
     .msg.err { background:#fff1f2; color:#881337; }
+
+  /* grid of nominated cards */
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:2rem; margin-top:1rem }
+  .card { background:var(--card-bg); border-radius:12px; padding:0.9rem; box-shadow: var(--card-shadow); display:flex; flex-direction:column; gap:0.6rem; transition: transform .12s ease; color:var(--accent); margin-bottom: 20px; }
+    .card:hover { transform: translateY(-4px) }
+    .card .title { font-weight:600 }
+    .card .meta { color:var(--muted); font-size:0.9rem }
+    .card .actions { margin-top:auto; display:flex; gap:0.5rem; justify-content:flex-end }
+  .btn-primary { background:#f59e0b; color:#0f1724; border:none; padding:0.45rem 0.7rem; border-radius:8px; cursor:pointer }
+  .btn-primary:hover { background:#d97706 }
+  /* selected / voted button */
+  .btn-selected { background:#fb923c; color:#0f1724; border:none; padding:0.45rem 0.7rem; border-radius:8px; cursor:default }
+  .btn-selected[disabled] { opacity:0.95 }
+  .btn-selected:hover { background:#f97316 }
+    .btn-ghost { background:transparent; border:1px solid #e5e7eb; padding:0.35rem 0.6rem; border-radius:8px }
   </style>
 </head>
 <body>
@@ -79,25 +94,35 @@
         const list = el('list');
         list.innerHTML = '';
         if (!Array.isArray(filtered) || filtered.length === 0) { list.textContent = 'No nominations for this category.'; return; }
+        // render as cards
         filtered.forEach(n => {
           const d = document.createElement('div');
-          d.className = 'nom';
-          const left = document.createElement('div');
-          left.textContent =  n.name + ' (movie_id=' + n.movie_id + ')';
-          d.appendChild(left);
-          const right = document.createElement('div');
-            const btn = document.createElement('button');
-            // if user already voted in this category, mark the nominated choice
-            if (String(votedMap[String(categoryId)]) === String(n.id)) {
-              btn.textContent = 'Voted';
-              btn.style.background = '#e6ffed';
-              btn.style.color = '#064e3b';
-            } else {
-              btn.textContent = 'Vote';
-            }
-            btn.addEventListener('click', () => vote(n.id, btn));
-            right.appendChild(btn);
-          d.appendChild(right);
+          d.className = 'card';
+          const title = document.createElement('div');
+          title.className = 'title';
+          title.textContent = n.name;
+          d.appendChild(title);
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          // prefer the returned movie name (movie_name); fall back to id if not present
+          meta.textContent = 'From: ' + (n.movie_name || n.movie_id);
+          d.appendChild(meta);
+          const actions = document.createElement('div');
+          actions.className = 'actions';
+          const btn = document.createElement('button');
+          // if user already voted in this category, mark the nominated choice
+          if (String(votedMap[String(categoryId)]) === String(n.id)) {
+            btn.textContent = 'Voted';
+            // show orange selected state for already-voted choice
+            btn.className = 'btn-selected';
+            btn.disabled = true;
+          } else {
+            btn.textContent = 'Vote';
+            btn.className = 'btn-primary';
+          }
+          btn.addEventListener('click', () => vote(n.id, btn));
+          actions.appendChild(btn);
+          d.appendChild(actions);
           list.appendChild(d);
         });
       } catch (err) {
@@ -119,10 +144,10 @@
         const csrf = getCookie('csrf_token');
         const res = await fetch('/add_vote', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type':'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ nominated_id: nominatedId }) });
         if (res.status === 201 || res.status === 200) {
-          // success; parse response to detect whether this was a create or update
-          const data = await res.json();
-          const created = !!data.created;
-          el('msg').innerHTML = '<div class="msg ok">' + (created ? 'Voted successfully' : 'Vote updated') + '</div>';
+          // success; reload the page so card states update and show the voted state
+          // small delay for UX
+          el('msg').innerHTML = '<div class="msg ok">Voted successfully</div>';
+          setTimeout(() => window.location.reload(), 500);
           pendingVote = null; pendingBtn = null;
         } else if (res.status === 409) {
           const txt = await res.text();
