@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"votacao/internal/store"
 	"votacao/models"
@@ -274,42 +273,15 @@ func (h *Handler) AddNominated(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Accept either movie_id or movie_name in the request JSON.
-	var in struct {
-		MovieID   int64  `json:"movie_id,omitempty"`
-		MovieName string `json:"movie_name,omitempty"`
-		CategoryID int64 `json:"category_id"`
-		Name      string `json:"name"`
-	}
-	if err := json.Unmarshal(body, &in); err != nil {
+	var n models.Nominated
+	if err := json.Unmarshal(body, &n); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if (in.MovieID == 0 && strings.TrimSpace(in.MovieName) == "") || in.CategoryID == 0 || in.Name == "" {
-		http.Error(w, "movie_id or movie_name, category_id and name are required", http.StatusBadRequest)
+	if n.MovieID == 0 || n.CategoryID == 0 || n.Name == "" {
+		http.Error(w, "movie_id, category_id and name are required", http.StatusBadRequest)
 		return
 	}
-	// resolve movie id by name if needed
-	if in.MovieID == 0 {
-		// try to find by title
-		m, err := h.movieStore.GetByTitle(in.MovieName)
-		if err != nil {
-			http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if m == nil {
-			// create movie
-			mid, err := h.movieStore.Insert(&models.Movie{Title: in.MovieName})
-			if err != nil {
-				http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			in.MovieID = mid
-		} else {
-			in.MovieID = m.ID
-		}
-	}
-	n := models.Nominated{MovieID: in.MovieID, CategoryID: in.CategoryID, Name: in.Name}
 	id, err := h.nominatedStore.Insert(&n)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
@@ -339,48 +311,20 @@ func (h *Handler) AddNominateds(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Accept array of objects that may contain movie_id or movie_name
-	var ins []struct {
-		MovieID   int64  `json:"movie_id,omitempty"`
-		MovieName string `json:"movie_name,omitempty"`
-		CategoryID int64 `json:"category_id"`
-		Name      string `json:"name"`
-	}
-	if err := json.Unmarshal(body, &ins); err != nil {
+	var ns []models.Nominated
+	if err := json.Unmarshal(body, &ns); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if len(ins) == 0 {
+	if len(ns) == 0 {
 		http.Error(w, "empty nomination list", http.StatusBadRequest)
 		return
 	}
-	// Resolve movie ids where needed
-	ns := make([]models.Nominated, 0, len(ins))
-	for i := range ins {
-		it := ins[i]
-		if (it.MovieID == 0 && strings.TrimSpace(it.MovieName) == "") || it.CategoryID == 0 || it.Name == "" {
-			http.Error(w, "movie_id or movie_name, category_id and name are required for each nomination", http.StatusBadRequest)
+	for i := range ns {
+		if ns[i].MovieID == 0 || ns[i].CategoryID == 0 || ns[i].Name == "" {
+			http.Error(w, "movie_id, category_id and name are required for each nomination", http.StatusBadRequest)
 			return
 		}
-		mid := it.MovieID
-		if mid == 0 {
-			m, err := h.movieStore.GetByTitle(it.MovieName)
-			if err != nil {
-				http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if m == nil {
-				nid, err := h.movieStore.Insert(&models.Movie{Title: it.MovieName})
-				if err != nil {
-					http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
-					return
-				}
-				mid = nid
-			} else {
-				mid = m.ID
-			}
-		}
-		ns = append(ns, models.Nominated{MovieID: mid, CategoryID: it.CategoryID, Name: it.Name})
 	}
 	ids, err := h.nominatedStore.InsertMany(ns)
 	if err != nil {
