@@ -16,13 +16,18 @@ import (
 )
 
 func main() {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		envOr("PG_HOST", "localhost"),
-		envOr("PG_PORT", "5432"),
-		envOr("PG_USER", "postgres"),
-		envOr("PG_PASSWORD", "postgres"),
-		envOr("PG_DB", "moviesdb"),
-	)
+	// Prefer a full DATABASE_URL (postgresql://...) if provided. Otherwise
+	// build a lib/pq style DSN from individual PG_* environment variables.
+	dsn := envOr("DATABASE_URL", "")
+	if dsn == "" {
+		dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			envOr("PG_HOST", "localhost"),
+			envOr("PG_PORT", "5432"),
+			envOr("PG_USER", "postgres"),
+			envOr("PG_PASSWORD", "postgres"),
+			envOr("PG_DB", "moviesdb"),
+		)
+	}
 
 	database, err := db.Open(dsn)
 	if err != nil {
@@ -108,6 +113,9 @@ func main() {
 	// voting routes (require auth)
 	http.HandleFunc("/add_vote", h.RequireAuth(h.AddVote))
 	http.HandleFunc("/votes", h.RequireAuth(h.ListVotes))
+
+	// health check
+	http.HandleFunc("/healthz", h.Healthz)
 
 	addr := envOr("HTTP_ADDR", ":8080")
 	log.Printf("listening on %s", addr)

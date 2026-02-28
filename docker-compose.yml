@@ -14,6 +14,7 @@ services:
   app:
     build: .
     environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/moviesdb?sslmode=disable"
       PG_HOST: db
       PG_PORT: 5432
       PG_USER: postgres
