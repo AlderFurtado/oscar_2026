@@ -5,15 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Login / Register</title>
   <style>
-    body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; }
-    .container { max-width: 520px; margin: 0 auto; }
-    label { display:block; margin-top: 0.75rem; }
-    input, textarea { width:100%; padding:0.5rem; font-size:1rem; }
-    button { margin-top: 1rem; padding: 0.6rem 1rem; font-size:1rem; }
+    :root{ --muted:#9ca3af; --accent:#f3f4f6; --yellow:#f59e0b; --yellow-strong:#fb923c; --bg-1:#071121; --bg-2:#0b1224 }
+    @keyframes bgShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    body { font-family: Inter, system-ui, -apple-system, Roboto, Arial; padding: 2rem; margin:0; color:var(--accent);
+      background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, #081628 100%); background-size:300% 300%; animation: bgShift 18s ease infinite; }
+    .container { max-width: 720px; margin: 3.5rem auto; display:flex; align-items:center; justify-content:center; min-height:60vh }
+    /* keep modal centered when used standalone */
+    .page-panel { width:100%; display:flex; align-items:center; justify-content:center; gap:1.2rem }
+    .lead { color:var(--muted); margin-bottom:1rem; text-align:center }
+    label { display:block; margin-top: 0.6rem; color:var(--muted) }
+    input, textarea { width:100%; padding:0.6rem; font-size:1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background: rgba(0,0,0,0.25); color:var(--accent) }
+    button { margin-top: 1rem; padding: 0.6rem 1rem; font-size:1rem; border-radius:10px; cursor:pointer }
     .row { display:flex; gap:0.5rem; }
-    .msg { margin-top:1rem; padding:0.6rem; border-radius:6px; }
-    .msg.ok { background:#e6ffed; color:#064e3b; }
-    .msg.err { background:#fff1f2; color:#881337; }
+    .msg { margin-top:1rem; padding:0.6rem; border-radius:8px; }
+    .msg.ok { background: rgba(158,230,176,0.08); color:#9ee6b0 }
+    .msg.err { background: rgba(255,20,60,0.06); color:#ffb4c6 }
+    @media (max-width:520px) { .container { margin: 1.25rem auto; padding: 0 1rem } }
   </style>
 </head>
 <body>

@@ -117,6 +117,12 @@ func main() {
 	// health check
 	http.HandleFunc("/healthz", h.Healthz)
 
+	// root -> redirect to categories view
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// redirect home to categories view
+		http.Redirect(w, r, "/categories/view", http.StatusSeeOther)
+	})
+
 	addr := envOr("HTTP_ADDR", ":8080")
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
