@@ -5,29 +5,87 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Nominated</title>
   <style>
-  :root{ --muted:#9ca3af; --accent:#f3f4f6; --card-shadow: 0 8px 24px rgba(0,0,0,0.6); --background:#0b0b0d; --card-bg:#0f1724; }
-  body { font-family: system-ui, -apple-system, Roboto, Arial; padding: 2rem; background:var(--background); color:var(--accent) }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .top { display:flex; justify-content:space-between; align-items:center }
-    button { padding:0.45rem 0.85rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; cursor:pointer }
-    .msg { margin-top:1rem; padding:0.6rem; border-radius:6px; }
-    .msg.ok { background:#e6ffed; color:#064e3b; }
-    .msg.err { background:#fff1f2; color:#881337; }
+  :root{
+    --muted:#9ca3af;
+    --accent:#f3f4f6;
+    --yellow:#f59e0b; /* project yellow */
+    --yellow-strong:#fb923c;
+    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --background-1:#071121;
+    --background-2:#0b1224;
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, Roboto, Arial;
+    padding: 2.5rem;
+    margin: 0;
+    color: var(--accent);
+    background: linear-gradient(135deg, var(--background-1) 0%, var(--background-2) 50%, #081628 100%);
+    background-size: 300% 300%;
+    animation: bgShift 18s ease infinite;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:1rem }
+  h1 { margin:0; font-size:1.6rem; letter-spacing:0.6px }
+
+  button {
+    padding:0.5rem 0.9rem;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.06);
+    background:transparent;
+    color:var(--accent);
+    cursor:pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(2,6,23,0.45); }
+
+  .msg { margin-top:1rem; padding:0.75rem; border-radius:10px; background: rgba(255,255,255,0.02); }
+  .msg.ok { background: rgba(158,230,176,0.08); color:#9ee6b0 }
+  .msg.err { background: rgba(255,20,60,0.06); color:#ffb4c6 }
 
   /* grid of nominated cards */
-  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:2rem; margin-top:1rem }
-  .card { background:var(--card-bg); border-radius:12px; padding:0.9rem; box-shadow: var(--card-shadow); display:flex; flex-direction:column; gap:0.6rem; transition: transform .12s ease; color:var(--accent); margin-bottom: 20px; }
-    .card:hover { transform: translateY(-4px) }
-    .card .title { font-weight:600 }
-    .card .meta { color:var(--muted); font-size:0.9rem }
-    .card .actions { margin-top:auto; display:flex; gap:0.5rem; justify-content:flex-end }
-  .btn-primary { background:#f59e0b; color:#0f1724; border:none; padding:0.45rem 0.7rem; border-radius:8px; cursor:pointer }
-  .btn-primary:hover { background:#d97706 }
-  /* selected / voted button */
-  .btn-selected { background:#fb923c; color:#0f1724; border:none; padding:0.45rem 0.7rem; border-radius:8px; cursor:default }
-  .btn-selected[disabled] { opacity:0.95 }
-  .btn-selected:hover { background:#f97316 }
-    .btn-ghost { background:transparent; border:1px solid #e5e7eb; padding:0.35rem 0.6rem; border-radius:8px }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.6rem; margin-top:1.4rem }
+  .card {
+    background: var(--card-bg);
+    border-radius:14px;
+    padding:1rem;
+    box-shadow: var(--card-shadow);
+    display:flex; flex-direction:column; gap:0.6rem;
+    color:var(--accent);
+    transform: translateY(0);
+    transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+  .card:hover { transform: translateY(-8px) scale(1.01); box-shadow: 0 20px 40px rgba(2,6,23,0.7); }
+  .card .title { font-weight:700; font-size:1.02rem }
+  .card .meta { color:var(--muted); font-size:0.9rem }
+  .card .actions { margin-top:auto; display:flex; gap:0.5rem; justify-content:flex-end }
+
+  .btn-primary {
+    background: linear-gradient(180deg, var(--yellow) 0%, var(--yellow-strong) 100%);
+    color:#071021; border:none; padding:0.5rem 0.85rem; border-radius:10px; cursor:pointer;
+    box-shadow: 0 8px 18px rgba(245,158,11,0.18);
+  }
+  .btn-primary:hover { transform: translateY(-3px) scale(1.02); }
+
+  .btn-selected {
+    background: linear-gradient(180deg, #ffd69a, var(--yellow-strong));
+    color:#071021; border:none; padding:0.48rem 0.82rem; border-radius:10px; cursor:default;
+  }
+  .btn-selected[disabled] { opacity:0.98 }
+
+  .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); padding:0.35rem 0.6rem; border-radius:8px }
+  @media (max-width:520px) { body { padding:1rem } .grid { gap:1rem } }
   </style>
 </head>
 <body>
@@ -36,7 +94,7 @@
       <h1 id="title">Nominated</h1>
       <div>
         <button id="btnBack">Back</button>
-        <button id="btnLogout">Logout</button>
+        <button id="btnLogout" style="display:none">Logout</button>
       </div>
     </div>
     <p id="msg">Loading...</p>
@@ -53,6 +111,34 @@
       el('msg').textContent = 'category_id missing in query';
       throw new Error('category_id missing');
     }
+
+    // fetch category metadata (name) and update title to show the category name
+    (async function setCategoryTitle() {
+      try {
+        const res = await fetch('/categories?id=' + encodeURIComponent(categoryId), { credentials: 'same-origin' });
+        if (!res.ok) return; // leave default title
+        const c = await res.json();
+        if (c && c.name) {
+          el('title').textContent = c.name;
+        }
+      } catch (e) {
+        // silent - keep default title
+      }
+    })();
+
+    // check if user is authenticated; show logout button only when authenticated
+    (async function checkAuthAndShowLogout() {
+      try {
+        const res = await fetch('/me', { credentials: 'same-origin' });
+        if (res.ok) {
+          // user is authenticated — show logout button
+          const btn = el('btnLogout');
+          if (btn) btn.style.display = '';
+        }
+      } catch (e) {
+        // ignore network errors — leave logout hidden
+      }
+    })();
 
     // use cookie-based auth; call /logout to clear cookie
     el('btnBack').addEventListener('click', () => window.history.back());
@@ -100,7 +186,8 @@
           d.className = 'card';
           const title = document.createElement('div');
           title.className = 'title';
-          title.textContent = n.name;
+          // show nominee name when present, otherwise fall back to the movie title
+          title.textContent = n.name || n.movie_name;
           d.appendChild(title);
           const meta = document.createElement('div');
           meta.className = 'meta';

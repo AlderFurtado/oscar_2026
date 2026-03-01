@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,69 +13,69 @@ import (
 
 type mockMovieStore struct{}
 
-func (m *mockMovieStore) Insert(mv *models.Movie) (int64, error) {
-	return 42, nil
+func (m *mockMovieStore) Insert(mv *models.Movie) (string, error) {
+	return "00000000-0000-0000-0000-000000000042", nil
 }
-func (m *mockMovieStore) Get(id int64) (*models.Movie, error) {
-	if id != 42 {
+func (m *mockMovieStore) Get(id string) (*models.Movie, error) {
+	if id != "00000000-0000-0000-0000-000000000042" {
 		return nil, nil
 	}
-	return &models.Movie{ID: 42, Title: "Mock"}, nil
+	return &models.Movie{ID: "00000000-0000-0000-0000-000000000042", Title: "Mock"}, nil
 }
 func (m *mockMovieStore) List() ([]models.Movie, error) {
-	return []models.Movie{{ID: 42, Title: "Mock"}}, nil
+	return []models.Movie{{ID: "00000000-0000-0000-0000-000000000042", Title: "Mock"}}, nil
 }
 
-func (m *mockMovieStore) InsertMany(ms []models.Movie) ([]int64, error) {
-	ids := make([]int64, 0, len(ms))
+func (m *mockMovieStore) InsertMany(ms []models.Movie) ([]string, error) {
+	ids := make([]string, 0, len(ms))
 	for i := range ms {
-		ids = append(ids, int64(100+i))
+		ids = append(ids, fmt.Sprintf("00000000-0000-0000-0000-0000000001%02d", i))
 	}
 	return ids, nil
 }
 
 type mockCategoryStore struct{}
 
-func (m *mockCategoryStore) Insert(c *models.Category) (int64, error) {
-	return 7, nil
+func (m *mockCategoryStore) Insert(c *models.Category) (string, error) {
+	return "00000000-0000-0000-0000-000000000007", nil
 }
-func (m *mockCategoryStore) Get(id int64) (*models.Category, error) {
-	if id != 7 {
+func (m *mockCategoryStore) Get(id string) (*models.Category, error) {
+	if id != "00000000-0000-0000-0000-000000000007" {
 		return nil, nil
 	}
-	return &models.Category{ID: 7, Name: "MockCat"}, nil
+	return &models.Category{ID: "00000000-0000-0000-0000-000000000007", Name: "MockCat"}, nil
 }
 func (m *mockCategoryStore) List() ([]models.Category, error) {
-	return []models.Category{{ID: 7, Name: "MockCat"}}, nil
+	return []models.Category{{ID: "00000000-0000-0000-0000-000000000007", Name: "MockCat"}}, nil
 }
-func (m *mockCategoryStore) InsertMany(cs []models.Category) ([]int64, error) {
-	ids := make([]int64, 0, len(cs))
+func (m *mockCategoryStore) InsertMany(cs []models.Category) ([]string, error) {
+	ids := make([]string, 0, len(cs))
 	for i := range cs {
-		ids = append(ids, int64(200+i))
+		ids = append(ids, fmt.Sprintf("00000000-0000-0000-0000-0000000002%02d", i))
 	}
 	return ids, nil
 }
 
 type mockNominatedStore struct{}
 
-func (m *mockNominatedStore) Insert(n *models.Nominated) (int64, error) {
-	return 11, nil
+func (m *mockNominatedStore) Insert(n *models.Nominated) (string, error) {
+	return "00000000-0000-0000-0000-000000000011", nil
 }
-func (m *mockNominatedStore) InsertMany(ns []models.Nominated) ([]int64, error) {
-	ids := make([]int64, 0, len(ns))
+func (m *mockNominatedStore) InsertMany(ns []models.Nominated) ([]string, error) {
+	ids := make([]string, 0, len(ns))
 	for i := range ns {
-		ids = append(ids, int64(300+i))
+		ids = append(ids, fmt.Sprintf("00000000-0000-0000-0000-0000000003%02d", i))
 	}
 	return ids, nil
 }
-func (m *mockNominatedStore) Get(id int64) (*models.Nominated, error) {
-	if id != 11 {
+func (m *mockNominatedStore) Get(id string) (*models.Nominated, error) {
+	if id != "00000000-0000-0000-0000-000000000011" {
 		return nil, nil
 	}
-	return &models.Nominated{ID: 11, MovieID: 1, CategoryID: 1, Name: "Nominee"}, nil
+	return &models.Nominated{ID: "00000000-0000-0000-0000-000000000011", MovieID: "1", CategoryID: "1", Name: "Nominee"}, nil
 }
 func (m *mockNominatedStore) List() ([]models.Nominated, error) {
-	return []models.Nominated{{ID: 11, MovieID: 1, CategoryID: 1, Name: "Nominee"}}, nil
+	return []models.Nominated{{ID: "00000000-0000-0000-0000-000000000011", MovieID: "1", CategoryID: "1", Name: "Nominee"}}, nil
 }
 
 type mockUserStore struct{}
@@ -109,8 +110,8 @@ func TestAddMovie(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.ID != 42 {
-		t.Fatalf("expected id 42 got %d", got.ID)
+	if got.ID != "00000000-0000-0000-0000-000000000042" {
+		t.Fatalf("expected id 000...42 got %s", got.ID)
 	}
 }
 
@@ -147,8 +148,8 @@ func TestAddCategory(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got.ID != 7 {
-		t.Fatalf("expected id 7 got %d", got.ID)
+	if got.ID != "00000000-0000-0000-0000-000000000007" {
+		t.Fatalf("expected id 000...07 got %s", got.ID)
 	}
 }
 
@@ -188,7 +189,7 @@ func TestAddCategories(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("expected 2 categories got %d", len(got))
 	}
-	if got[0].ID == 0 || got[1].ID == 0 {
+	if got[0].ID == "" || got[1].ID == "" {
 		t.Fatalf("expected assigned ids, got %+v", got)
 	}
 }
@@ -213,7 +214,7 @@ func TestAddMovies(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("expected 2 movies got %d", len(got))
 	}
-	if got[0].ID == 0 || got[1].ID == 0 {
+	if got[0].ID == "" || got[1].ID == "" {
 		t.Fatalf("expected assigned ids, got %+v", got)
 	}
 }

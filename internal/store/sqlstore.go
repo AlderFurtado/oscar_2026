@@ -13,19 +13,19 @@ type SQLStore struct {
 
 func NewSQL(db *sql.DB) *SQLStore { return &SQLStore{db: db} }
 
-func (s *SQLStore) Insert(m *models.Movie) (int64, error) {
-	var id int64
+func (s *SQLStore) Insert(m *models.Movie) (string, error) {
+	var id string
 	err := s.db.QueryRow("INSERT INTO movies (title) VALUES ($1) RETURNING id", m.Title).Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("insert: %w", err)
+		return "", fmt.Errorf("insert: %w", err)
 	}
 	return id, nil
 }
 
 // InsertMany inserts multiple movies in a transaction and returns their IDs in order.
-func (s *SQLStore) InsertMany(ms []models.Movie) ([]int64, error) {
+func (s *SQLStore) InsertMany(ms []models.Movie) ([]string, error) {
 	if len(ms) == 0 {
-		return []int64{}, nil
+		return []string{}, nil
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -38,10 +38,9 @@ func (s *SQLStore) InsertMany(ms []models.Movie) ([]int64, error) {
 		return nil, fmt.Errorf("prepare: %w", err)
 	}
 	defer stmt.Close()
-
-	ids := make([]int64, 0, len(ms))
+	ids := make([]string, 0, len(ms))
 	for _, m := range ms {
-		var id int64
+		var id string
 		if err := stmt.QueryRow(m.Title).Scan(&id); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("insert many: %w", err)
@@ -54,7 +53,7 @@ func (s *SQLStore) InsertMany(ms []models.Movie) ([]int64, error) {
 	return ids, nil
 }
 
-func (s *SQLStore) Get(id int64) (*models.Movie, error) {
+func (s *SQLStore) Get(id string) (*models.Movie, error) {
 	var m models.Movie
 	row := s.db.QueryRow("SELECT id, title FROM movies WHERE id=$1", id)
 	if err := row.Scan(&m.ID, &m.Title); err != nil {

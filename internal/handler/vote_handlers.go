@@ -32,13 +32,13 @@ func (h *Handler) AddVote(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	var req struct {
-		NominatedID int64 `json:"nominated_id"`
+		NominatedID string `json:"nominated_id"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.NominatedID == 0 {
+	if req.NominatedID == "" {
 		http.Error(w, "nominated_id is required", http.StatusBadRequest)
 		return
 	}

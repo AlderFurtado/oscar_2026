@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"io"
 	"net/http"
-	"strconv"
 
 	"votacao/internal/store"
 	"votacao/models"
@@ -148,12 +147,8 @@ func (h *Handler) GetMovie(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.ParseInt(q, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	m, err := h.movieStore.Get(id)
+	// IDs are UUID strings now — pass directly
+	m, err := h.movieStore.Get(q)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -278,7 +273,7 @@ func (h *Handler) AddNominated(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if n.MovieID == 0 || n.CategoryID == 0 || n.Name == "" {
+	if n.MovieID == "" || n.CategoryID == "" || n.Name == "" {
 		http.Error(w, "movie_id, category_id and name are required", http.StatusBadRequest)
 		return
 	}
@@ -321,7 +316,7 @@ func (h *Handler) AddNominateds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range ns {
-		if ns[i].MovieID == 0 || ns[i].CategoryID == 0 || ns[i].Name == "" {
+		if ns[i].MovieID == "" || ns[i].CategoryID == "" || ns[i].Name == "" {
 			http.Error(w, "movie_id, category_id and name are required for each nomination", http.StatusBadRequest)
 			return
 		}
@@ -358,9 +353,9 @@ func (h *Handler) ListNominateds(w http.ResponseWriter, r *http.Request) {
 
 	// enrich nominateds with the movie title so frontends can show the movie name
 	type nominatedOut struct {
-		ID         int64  `json:"id,omitempty"`
-		MovieID    int64  `json:"movie_id"`
-		CategoryID int64  `json:"category_id"`
+		ID         string `json:"id,omitempty"`
+		MovieID    string `json:"movie_id"`
+		CategoryID string `json:"category_id"`
 		Name       string `json:"name"`
 		MovieName  string `json:"movie_name,omitempty"`
 	}
@@ -389,12 +384,7 @@ func (h *Handler) GetNominated(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.ParseInt(q, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	n, err := h.nominatedStore.Get(id)
+	n, err := h.nominatedStore.Get(q)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -473,17 +463,7 @@ func (h *Handler) CreateNominatedFromForm(w http.ResponseWriter, r *http.Request
 		http.Error(w, "movie_id, category_id and name are required", http.StatusBadRequest)
 		return
 	}
-	movieID, err := strconv.ParseInt(movieIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid movie_id", http.StatusBadRequest)
-		return
-	}
-	categoryID, err := strconv.ParseInt(categoryIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid category_id", http.StatusBadRequest)
-		return
-	}
-	n := models.Nominated{MovieID: movieID, CategoryID: categoryID, Name: name}
+	n := models.Nominated{MovieID: movieIDStr, CategoryID: categoryIDStr, Name: name}
 	id, err := h.nominatedStore.Insert(&n)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
@@ -515,14 +495,14 @@ func (h *Handler) AddNominatedsByNames(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req struct {
-		CategoryID int64    `json:"category_id"`
+		CategoryID string   `json:"category_id"`
 		Names      []string `json:"names"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.CategoryID == 0 || len(req.Names) == 0 {
+	if req.CategoryID == "" || len(req.Names) == 0 {
 		http.Error(w, "category_id and non-empty names are required", http.StatusBadRequest)
 		return
 	}
@@ -669,12 +649,8 @@ func (h *Handler) GetCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "id is required", http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.ParseInt(q, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	c, err := h.categoryStore.Get(id)
+	// IDs are UUID strings now — pass directly
+	c, err := h.categoryStore.Get(q)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return

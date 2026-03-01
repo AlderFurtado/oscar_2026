@@ -1,7 +1,7 @@
 package models
 
-// Movie represents a movie with only ID and Title fields.
+// Movie represents a movie with UUID id and Title fields.
 type Movie struct {
-	ID    int64  `json:"id,omitempty"`
+	ID    string `json:"id,omitempty"`
 	Title string `json:"title"`
 }

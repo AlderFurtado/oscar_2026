@@ -1,38 +1,85 @@
 {{ define "auth_modal" }}
 <!-- Auth modal partial: supports login and register, dispatches 'auth:login' on successful auth when embedded -->
-<div id="loginModal" aria-hidden="true" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
-  <div style="background:#fff; padding:1rem 1.25rem; border-radius:8px; width:360px; box-shadow:0 6px 24px rgba(0,0,0,0.2);">
-    <h2 id="modalTitle" style="margin-top:0">Sign in</h2>
-    <p id="modalDesc" style="color:#444; margin-top:0.25rem">Sign in to vote or register a new account.</p>
+<style>
+  /* Auth modal styles: animated backdrop, dialog, form controls */
+  :root { --accent: #f3f4f6; --muted: #9ca3af; --yellow: #f59e0b; --yellow-strong: #fb923c; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity:0 } to { transform: translateY(0) scale(1); opacity:1 } }
 
-    <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
-      <button id="tabLogin" type="button" style="flex:1">Login</button>
-      <button id="tabRegister" type="button" style="flex:1">Register</button>
+  #loginModal.auth-modal {
+    display:none; position:fixed; inset:0; z-index:1200; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at center, rgba(2,6,23,0.6), rgba(2,6,23,0.7));
+    backdrop-filter: blur(4px);
+    animation: fadeIn .18s ease both;
+    padding: 2rem;
+  }
+
+  .auth-dialog {
+    width:420px; max-width:94%; border-radius:14px; padding:1.15rem 1.2rem;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    box-shadow: 0 20px 40px rgba(2,6,23,0.7); border:1px solid rgba(255,255,255,0.03);
+    color:var(--accent); animation: pop .2s cubic-bezier(.2,.9,.2,1) both;
+  }
+
+  #modalTitle { margin:0; font-size:1.25rem; }
+  #modalDesc { margin:0.25rem 0 0.6rem 0; color:var(--muted); font-size:0.95rem }
+
+  .auth-tabs { display:flex; gap:0.5rem; margin-top:0.5rem }
+  .auth-tabs button { flex:1; padding:0.6rem 0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--accent); cursor:pointer; }
+  .auth-tabs button[disabled] { background: linear-gradient(180deg, rgba(245,158,11,0.12), rgba(251,146,60,0.06)); color:#071021; font-weight:600 }
+
+  form#authForm { margin-top:0.85rem; display:flex; flex-direction:column; gap:0.6rem }
+  label { font-size:0.9rem; color:var(--muted); }
+  input[type="text"], input[type="email"], input[type="password"], textarea {
+    width:100%; padding:0.6rem; margin-top:0.25rem; border-radius:8px; border:1px solid rgba(255,255,255,0.04);
+    background: rgba(0,0,0,0.25); color:var(--accent); outline:none; transition: box-shadow .12s ease, transform .12s ease;
+  }
+  input:focus, textarea:focus { box-shadow: 0 8px 20px rgba(2,6,23,0.6); transform: translateY(-2px) }
+
+  .form-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem }
+  .btn { padding:0.55rem 0.85rem; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--accent); cursor:pointer }
+  .btn-ghost { background:transparent }
+  .btn-primary { background: linear-gradient(180deg, var(--yellow), var(--yellow-strong)); color:#071021; border:none; box-shadow: 0 8px 18px rgba(245,158,11,0.16) }
+
+  .modal-msg { margin-top:0.4rem }
+  .modal-msg .err { background: rgba(255,20,60,0.06); padding:0.5rem; border-radius:8px; color:#ffb4c6 }
+
+  @media (max-width:480px) { .auth-dialog { width: 96%; padding:1rem } }
+</style>
+
+<div id="loginModal" aria-hidden="true" class="auth-modal">
+  <div class="auth-dialog">
+    <h2 id="modalTitle">Sign in</h2>
+    <p id="modalDesc">Sign in to vote or register a new account.</p>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" type="button">Login</button>
+      <button id="tabRegister" type="button">Register</button>
     </div>
 
-    <form id="authForm" style="margin-top:0.75rem">
+    <form id="authForm">
       <div id="boxNickname" style="display:none">
         <label for="nickname">Nickname (optional)</label>
-        <input id="nickname" name="nickname" type="text" style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+        <input id="nickname" name="nickname" type="text" />
       </div>
 
       <label for="modal_email">Email</label>
-      <input id="modal_email" name="email" type="email" required style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+      <input id="modal_email" name="email" type="email" required />
 
       <label for="modal_password">Password</label>
-      <input id="modal_password" name="password" type="password" required style="width:100%; padding:0.5rem; margin-top:0.25rem" />
+      <input id="modal_password" name="password" type="password" required />
 
       <div id="boxBio" style="display:none">
         <label for="bio">Bio (optional)</label>
-        <textarea id="bio" name="bio" rows="3" style="width:100%; padding:0.5rem; margin-top:0.25rem"></textarea>
+        <textarea id="bio" name="bio" rows="3"></textarea>
       </div>
 
-      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.75rem">
-        <button id="modalCancel" type="button">Cancel</button>
-        <button id="modalLogin" type="button">Login</button>
+      <div class="form-actions">
+        <button id="modalCancel" type="button" class="btn btn-ghost">Cancel</button>
+        <button id="modalLogin" type="button" class="btn btn-primary">Login</button>
       </div>
 
-      <div id="modalResult" style="margin-top:0.5rem"></div>
+      <div id="modalResult" class="modal-msg"></div>
     </form>
   </div>
 </div>

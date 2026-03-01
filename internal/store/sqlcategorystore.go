@@ -14,18 +14,18 @@ type SQLCategoryStore struct {
 
 func NewSQLCategory(db *sql.DB) *SQLCategoryStore { return &SQLCategoryStore{db: db} }
 
-func (s *SQLCategoryStore) Insert(c *models.Category) (int64, error) {
-	var id int64
+func (s *SQLCategoryStore) Insert(c *models.Category) (string, error) {
+	var id string
 	err := s.db.QueryRow("INSERT INTO categories (name) VALUES ($1) RETURNING id", c.Name).Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("insert category: %w", err)
+		return "", fmt.Errorf("insert category: %w", err)
 	}
 	return id, nil
 }
 
-func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]int64, error) {
+func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]string, error) {
 	if len(cs) == 0 {
-		return []int64{}, nil
+		return []string{}, nil
 	}
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -37,10 +37,9 @@ func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]int64, error) {
 		return nil, fmt.Errorf("prepare: %w", err)
 	}
 	defer stmt.Close()
-
-	ids := make([]int64, 0, len(cs))
+	ids := make([]string, 0, len(cs))
 	for _, c := range cs {
-		var id int64
+		var id string
 		if err := stmt.QueryRow(c.Name).Scan(&id); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("insert categories: %w", err)
@@ -53,7 +52,7 @@ func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]int64, error) {
 	return ids, nil
 }
 
-func (s *SQLCategoryStore) Get(id int64) (*models.Category, error) {
+func (s *SQLCategoryStore) Get(id string) (*models.Category, error) {
 	var c models.Category
 	row := s.db.QueryRow("SELECT id, name FROM categories WHERE id=$1", id)
 	if err := row.Scan(&c.ID, &c.Name); err != nil {
