@@ -397,6 +397,47 @@ func (h *Handler) GetNominated(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(n)
 }
 
+// ListNominatedsByCategory handles GET /nominateds/by_category?category_id=<id>
+// It returns nominated entries that belong to the provided category id.
+func (h *Handler) ListNominatedsByCategory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	cid := r.URL.Query().Get("category_id")
+	if cid == "" {
+		http.Error(w, "category_id is required", http.StatusBadRequest)
+		return
+	}
+	out, err := h.nominatedStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type nominatedOut struct {
+		ID         string `json:"id,omitempty"`
+		MovieID    string `json:"movie_id"`
+		CategoryID string `json:"category_id"`
+		Name       string `json:"name"`
+		MovieName  string `json:"movie_name,omitempty"`
+	}
+
+	res := make([]nominatedOut, 0)
+	for _, n := range out {
+		if n.CategoryID == cid {
+			no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
+			if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
+				no.MovieName = m.Title
+			}
+			res = append(res, no)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
+}
+
 // ServeNominatedForm renders an HTML form to create a nomination by selecting
 // a movie and a category and entering a name. The form POSTs to /nominated/create.
 func (h *Handler) ServeNominatedForm(w http.ResponseWriter, r *http.Request) {
@@ -471,7 +512,7 @@ func (h *Handler) CreateNominatedFromForm(w http.ResponseWriter, r *http.Request
 	}
 	// Redirect to list view after successful creation
 	http.Redirect(w, r, "/nominateds", http.StatusSeeOther)
-	fmt.Printf("created nomination id=%d\n", id)
+	fmt.Printf("created nomination id=%s\n", id)
 }
 
 // AddNominatedsByNames accepts POST /add_nominateds_names with JSON { category_id: <int>, names: ["name1","name2"] }

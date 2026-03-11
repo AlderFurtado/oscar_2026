@@ -163,9 +163,9 @@
 
     async function fetchNominateds() {
       try {
-        // fetch nominateds and current user votes so we can mark the selected one
+        // fetch nominateds for this category and current user votes so we can mark the selected one
         const [res, votesRes] = await Promise.all([
-          fetch('/nominateds', { credentials: 'same-origin' }),
+          fetch('/nominateds/by_category?category_id=' + encodeURIComponent(categoryId), { credentials: 'same-origin' }),
           fetch('/votes', { credentials: 'same-origin' }).catch(() => ({ ok: false }))
         ]);
         if (!res.ok) { el('msg').textContent = 'Failed to load nominateds: ' + await res.text(); return; }
@@ -179,13 +179,12 @@
         if (Array.isArray(votes)) {
           votes.forEach(v => { votedMap[String(v.category_id)] = v.nominated_id });
         }
-        const filtered = data.filter(n => String(n.category_id) === String(categoryId));
         el('msg').textContent = '';
         const list = el('list');
         list.innerHTML = '';
-        if (!Array.isArray(filtered) || filtered.length === 0) { list.textContent = 'No nominations for this category.'; return; }
+        if (!Array.isArray(data) || data.length === 0) { list.textContent = 'No nominations for this category.'; return; }
         // render as cards
-        filtered.forEach(n => {
+        data.forEach(n => {
           const d = document.createElement('div');
           d.className = 'card';
           const title = document.createElement('div');

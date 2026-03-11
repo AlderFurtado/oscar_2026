@@ -95,6 +95,7 @@ func main() {
 	http.HandleFunc("/users", h.ListUsers)
 	http.HandleFunc("/participants", h.ServeParticipantsView)
 	http.HandleFunc("/nominateds/view", h.ServeNominatedsView)
+	http.HandleFunc("/nominateds/by_category", h.ListNominatedsByCategory)
 	http.HandleFunc("/add_nominateds_names", h.AddNominatedsByNames)
 	// JSON API endpoints for nominations
 	http.HandleFunc("/add_nominated", h.AddNominated)
