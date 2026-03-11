@@ -409,7 +409,7 @@ func (h *Handler) ListNominatedsByCategory(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "category_id is required", http.StatusBadRequest)
 		return
 	}
-	out, err := h.nominatedStore.List()
+	out, err := h.nominatedStore.ListByCategory(cid)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -423,15 +423,13 @@ func (h *Handler) ListNominatedsByCategory(w http.ResponseWriter, r *http.Reques
 		MovieName  string `json:"movie_name,omitempty"`
 	}
 
-	res := make([]nominatedOut, 0)
+	res := make([]nominatedOut, 0, len(out))
 	for _, n := range out {
-		if n.CategoryID == cid {
-			no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
-			if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
-				no.MovieName = m.Title
-			}
-			res = append(res, no)
+		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
+		if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
+			no.MovieName = m.Title
 		}
+		res = append(res, no)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

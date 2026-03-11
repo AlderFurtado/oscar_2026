@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"votacao/models"
 )
@@ -96,5 +97,49 @@ func (s *SQLNominatedStore) List() ([]models.Nominated, error) {
 		}
 		out = append(out, n)
 	}
+	log.Printf("sqlnominatedstore: List() complete, scanned %d rows", len(out))
+	return out, nil
+}
+
+// ListByCategory returns nominated rows filtered by category_id using a DB-level WHERE clause.
+func (s *SQLNominatedStore) ListByCategory(categoryID string) ([]models.Nominated, error) {
+	log.Printf("sqlnominatedstore: ListByCategory(category=%s) start", categoryID)
+	qry := `SELECT id, movie_id, category_id, nominee_name
+FROM nominees
+WHERE category_id = $1
+ORDER BY created_at DESC
+LIMIT 100`
+	rows, err := s.db.Query(qry, categoryID)
+	if err != nil {
+		log.Printf("sqlnominatedstore: ListByCategory query error: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]models.Nominated, 0)
+	i := 0
+	for rows.Next() {
+		var n models.Nominated
+		var name sql.NullString
+		if err := rows.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name); err != nil {
+			log.Printf("sqlnominatedstore: ListByCategory scan error at row %d: %v", i, err)
+			return nil, err
+		}
+		if name.Valid {
+			n.Name = name.String
+		} else {
+			n.Name = ""
+		}
+		log.Printf("sqlnominatedstore: ListByCategory scanned row %d: id=%s movie_id=%s category_id=%s", i, n.ID, n.MovieID, n.CategoryID)
+		out = append(out, n)
+		i++
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("sqlnominatedstore: ListByCategory rows.Err: %v", err)
+		return nil, err
+	}
+
+	log.Printf("sqlnominatedstore: ListByCategory complete, scanned %d rows", i)
 	return out, nil
 }

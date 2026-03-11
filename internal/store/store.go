@@ -41,6 +41,8 @@ type NominatedStore interface {
 	Get(id string) (*models.Nominated, error)
 	// List returns nominations (up to 100 by default).
 	List() ([]models.Nominated, error)
+	// ListByCategory returns nominations for a given category id (up to 100 by default).
+	ListByCategory(categoryID string) ([]models.Nominated, error)
 }
 
 // UserStore defines storage operations for application users.
