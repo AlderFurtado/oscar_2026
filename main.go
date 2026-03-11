@@ -91,6 +91,9 @@ func main() {
 	http.HandleFunc("/nominated/create", h.CreateNominatedFromForm)
 	http.HandleFunc("/login/new", h.ServeLoginForm)
 	http.HandleFunc("/categories/view", h.ServeCategoriesView)
+	http.HandleFunc("/profile", h.ServeProfileView)
+	http.HandleFunc("/users", h.ListUsers)
+	http.HandleFunc("/participants", h.ServeParticipantsView)
 	http.HandleFunc("/nominateds/view", h.ServeNominatedsView)
 	http.HandleFunc("/add_nominateds_names", h.AddNominatedsByNames)
 	// JSON API endpoints for nominations

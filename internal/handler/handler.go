@@ -429,7 +429,7 @@ func (h *Handler) ServeNominatedForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// fallback: parse template on each request if not provided at startup
-	tpl, err := template.ParseFiles("templates/nominated_form.html")
+	tpl, err := template.ParseFiles("templates/nominated_form.html", "templates/footer.html")
 	if err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -586,7 +586,7 @@ func (h *Handler) ServeCategoriesView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// try to load compiled template or parse from templates dir
-	tpl, err := template.ParseFiles("templates/categories_view.html")
+	tpl, err := template.ParseFiles("templates/categories_view.html", "templates/footer.html")
 	if err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -604,7 +604,43 @@ func (h *Handler) ServeNominatedsView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	tpl, err := template.ParseFiles("templates/nominateds_view.html", "templates/auth_modal.html")
+	tpl, err := template.ParseFiles("templates/nominateds_view.html", "templates/auth_modal.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.Execute(w, nil); err != nil {
+		http.Error(w, "template render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// ServeProfileView renders the user's profile page.
+func (h *Handler) ServeProfileView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tpl, err := template.ParseFiles("templates/profile_view.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.Execute(w, nil); err != nil {
+		http.Error(w, "template render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// ServeParticipantsView renders a page listing participants and their votes.
+func (h *Handler) ServeParticipantsView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tpl, err := template.ParseFiles("templates/participants_view.html", "templates/auth_modal.html", "templates/footer.html")
 	if err != nil {
 		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
 		return

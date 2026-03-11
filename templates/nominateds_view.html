@@ -10,6 +10,7 @@
     --accent:#f3f4f6;
     --yellow:#f59e0b; /* project yellow */
     --yellow-strong:#fb923c;
+    --footer-safe: 104px; /* space to avoid fixed footer overlay */
     --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
     --background-1:#071121;
     --background-2:#0b1224;
@@ -86,6 +87,9 @@
 
   .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); padding:0.35rem 0.6rem; border-radius:8px }
   @media (max-width:520px) { body { padding:1rem } .grid { gap:1rem } }
+  
+  /* Footer styles are centralized in templates/footer.html */
+
   </style>
 </head>
 <body>
@@ -273,5 +277,7 @@
 
     fetchNominateds();
   </script>
+
+  {{ template "footer" . }}
 </body>
 </html>

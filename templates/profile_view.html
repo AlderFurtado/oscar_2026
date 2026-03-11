@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile</title>
+  <style>
+  :root{
+    --muted:#9ca3af;
+    --accent:#f3f4f6;
+    --yellow:#f59e0b;
+    --yellow-strong:#fb923c;
+    --footer-safe: 104px;
+    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --background-1:#071121;
+    --background-2:#0b1224;
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, Roboto, Arial;
+  padding: 2.5rem;
+    margin: 0;
+    color: var(--accent);
+    background: linear-gradient(135deg, var(--background-1) 0%, var(--background-2) 50%, #081628 100%);
+    background-size: 300% 300%;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:1rem }
+  h1 { margin:0; font-size:1.6rem; }
+
+  .card { background: var(--card-bg); border-radius:14px; padding:1.05rem; box-shadow: var(--card-shadow); color:var(--accent); border:1px solid rgba(255,255,255,0.03); }
+  .meta { color:var(--muted); margin-top:0.4rem }
+  .row { display:flex; gap:1rem; align-items:center }
+  .votes { margin-top:1rem; display:flex; flex-direction:column; gap:0.8rem }
+  .vote-item { background: rgba(255,255,255,0.02); padding:0.6rem; border-radius:10px; display:flex; justify-content:space-between; align-items:center }
+  .empty { color:var(--muted) }
+
+  button {
+    padding:0.45rem 0.8rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--accent); cursor:pointer;
+  }
+  button.primary { background: linear-gradient(180deg, var(--yellow), var(--yellow-strong)); color:#071021; border:none }
+
+  /* Footer styles are centralized in templates/footer.html */
+
+  @media (max-width:520px) { body { padding:1rem } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <h1>Profile</h1>
+      <div>
+        <button id="btnLogout" style="display:none">Logout</button>
+      </div>
+    </div>
+
+    <div id="profile" class="card" role="region" aria-label="User profile">
+      <div class="row">
+        <div>
+          <div id="nick" style="font-weight:700; font-size:1.1rem">-</div>
+          <div id="email" class="meta">-</div>
+        </div>
+        <div style="margin-left:auto">
+          <button id="btnEdit" class="primary" style="display:none">Edit</button>
+        </div>
+      </div>
+
+      <div style="margin-top:0.9rem">
+        <div style="font-size:0.95rem; color:var(--muted)">Votes done</div>
+        <div id="votes" class="votes">
+          <div class="empty">Loading votes...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {{ template "footer" . }}
+
+  <script>
+
+    const el = id => document.getElementById(id);
+
+    async function loadProfile() {
+      try {
+        const [meRes, votesRes, categoriesRes, nomsRes] = await Promise.all([
+          fetch('/me', { credentials: 'same-origin' }),
+          fetch('/votes', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+          fetch('/categories', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+          fetch('/nominateds', { credentials: 'same-origin' }).catch(()=>({ok:false}))
+        ]);
+
+        if (!meRes.ok) {
+          // not authenticated -> redirect to login
+          if (meRes.status === 401) { window.location.href = '/login/new'; return }
+          const text = await meRes.text();
+          el('nick').textContent = 'Error loading profile: ' + text;
+          return;
+        }
+
+        const me = await meRes.json();
+        el('nick').textContent = me.nickname || me.email || 'User';
+        el('email').textContent = me.email || '';
+
+        // load votes and map names
+        let votes = [];
+        if (votesRes && votesRes.ok) votes = await votesRes.json();
+        let categories = [];
+        if (categoriesRes && categoriesRes.ok) categories = await categoriesRes.json();
+        let noms = [];
+        if (nomsRes && nomsRes.ok) noms = await nomsRes.json();
+
+        const catById = {};
+        categories.forEach(c => { catById[String(c.id)] = c });
+        const nomById = {};
+        noms.forEach(n => { nomById[String(n.id)] = n });
+
+        const userVotes = Array.isArray(votes) ? votes.filter(v => String(v.user_id) === String(me.id) || !v.user_id) : votes;
+
+        const cont = el('votes');
+        cont.innerHTML = '';
+        if (!Array.isArray(userVotes) || userVotes.length === 0) {
+          cont.innerHTML = '<div class="empty">You have not voted yet.</div>';
+          return;
+        }
+
+        userVotes.forEach(v => {
+          const item = document.createElement('div');
+          item.className = 'vote-item';
+          const left = document.createElement('div');
+          const cat = catById[String(v.category_id)];
+          const nom = nomById[String(v.nominated_id)];
+          left.innerHTML = '<div style="font-weight:700">' + (cat ? cat.name : ('Category ' + v.category_id)) + '</div>' +
+                           '<div class="meta">' + (nom ? (nom.name || nom.movie_name) : ('Nominated ' + v.nominated_id)) + '</div>';
+          const right = document.createElement('div');
+          right.innerHTML = '<div style="color:var(--muted); font-size:0.85rem">Voted</div>';
+          item.appendChild(left);
+          item.appendChild(right);
+          cont.appendChild(item);
+        });
+
+      } catch (err) {
+        el('nick').textContent = 'Error: ' + err.message;
+      }
+    }
+
+    // show logout button if authenticated
+    (async function(){
+      try {
+        const r = await fetch('/me', { credentials: 'same-origin' });
+        if (r.ok) {
+          const b = el('btnLogout'); if (b) b.style.display = '';
+        }
+      } catch(e){}
+    })();
+
+    el('btnLogout').addEventListener('click', async () => { await fetch('/logout', { method: 'GET', credentials: 'same-origin' }); window.location.href = '/login/new'; });
+
+    loadProfile();
+  </script>
+</body>
+</html>

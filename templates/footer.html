@@ -1,0 +1,52 @@
+{{ define "footer" }}
+  <style>
+  /* Footer navigation styles (now part of page flow, not fixed) */
+  .app-footer { position:relative; width:100%; max-width:1100px; height:64px; margin:28px auto 0; display:flex; gap:8px; align-items:center; justify-content:space-around; padding:8px 12px; border-radius:14px; background: rgba(7,17,33,0.6); border:1px solid rgba(255,255,255,0.04); box-shadow: 0 6px 18px rgba(2,6,23,0.32); backdrop-filter: blur(6px); }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; background:transparent; border:none; color:var(--accent); padding:8px; border-radius:10px; cursor:pointer; transition: transform .12s ease, background .12s ease; }
+  .nav-btn:hover { transform: translateY(-4px); background: rgba(255,255,255,0.02); }
+  .nav-btn .icon { width:22px; height:22px; fill:currentColor; opacity:0.95 }
+  .nav-btn .label { font-size:0.8rem; color:var(--muted); line-height:1 }
+  .nav-btn.selected { background: linear-gradient(180deg, var(--yellow), var(--yellow-strong)); color:#071021 }
+  @media (min-width:900px) { .app-footer { margin-top:32px; width: auto; } }
+  @media (max-width:520px) { .app-footer { margin-left:10px; margin-right:10px; border-radius:12px; width: auto; } .nav-btn .label { font-size:0.72rem } }
+  </style>
+  <!-- footer navigation -->
+  <footer class="app-footer" role="navigation" aria-label="Main navigation">
+  <button class="nav-btn" data-target="/participants" aria-label="Participants">
+      <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.98.05 1.16.84 1.98 1.96 1.98 3.45V19h6v-1.5C23 14.17 18.33 13 16 13z"/></svg>
+      <div class="label">Participants</div>
+    </button>
+    <button class="nav-btn" data-target="/categories/view" aria-label="Vote">
+      <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 7h-6V3H9v4H3v14h18V7zM5 19V9h14v10H5zM12 12l-4 4h8l-4-4z"/></svg>
+      <div class="label">Vote</div>
+    </button>
+    <button class="nav-btn" data-target="/profile" aria-label="Profile">
+      <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.2c-3.2 0-9.6 1.6-9.6 4.9V22h19.2v-2.9c0-3.3-6.4-4.9-9.6-4.9z"/></svg>
+      <div class="label">Profile</div>
+    </button>
+  </footer>
+
+  <script>
+    (function(){
+      const nav = document.querySelectorAll('.app-footer .nav-btn');
+      if (!nav) return;
+      nav.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = btn.getAttribute('data-target');
+          if (!t) return;
+          nav.forEach(b=>b.classList.remove('selected'));
+          btn.classList.add('selected');
+          setTimeout(()=> { window.location.href = t }, 120);
+        });
+      });
+      const path = window.location.pathname + window.location.search;
+      nav.forEach(btn => {
+        const t = btn.getAttribute('data-target');
+        try {
+          const u = new URL(t, window.location.origin).pathname;
+          if (path === t || path.startsWith(u)) btn.classList.add('selected');
+        } catch(e){}
+      });
+    })();
+  </script>
+{{ end }}

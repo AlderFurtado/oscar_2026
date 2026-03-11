@@ -10,9 +10,11 @@
     select,input { width: 100%; padding: .5rem; margin-top: .25rem }
     button { margin-top: 1rem; padding: .5rem 1rem }
     .container { max-width: 640px; margin: 0 auto }
+
+  /* Footer styles are centralized in templates/footer.html */
   </style>
-</head>
-<body>
+  </head>
+  <body>
   <div class="container">
     <h1>Create Nomination</h1>
     <form id="nomForm">
@@ -78,5 +80,8 @@
     </script>
     <p><a href="/nominateds">Back to nominations</a></p>
   </div>
+  
+  {{ template "footer" . }}
+
 </body>
 </html>

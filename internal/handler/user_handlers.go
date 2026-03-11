@@ -189,3 +189,30 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
 }
+
+// ListUsers returns a list of users (public).
+func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	us, err := h.userStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	out := make([]struct {
+		ID       string `json:"id"`
+		Nickname string `json:"nickname"`
+		Email    string `json:"email"`
+	}, 0, len(us))
+	for _, u := range us {
+		out = append(out, struct {
+			ID       string `json:"id"`
+			Nickname string `json:"nickname"`
+			Email    string `json:"email"`
+		}{ID: u.ID, Nickname: u.Nickname, Email: u.Email})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Participants</title>
+  <style>
+  :root{
+    --muted:#9ca3af;
+    --accent:#f3f4f6;
+    --yellow:#f59e0b;
+    --yellow-strong:#fb923c;
+    --footer-safe: 104px;
+    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --background-1:#071121;
+    --background-2:#0b1224;
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  body { font-family: Inter, system-ui, -apple-system, Roboto, Arial; padding:2.5rem; padding-bottom:var(--footer-safe); margin:0; color:var(--accent); background: linear-gradient(135deg, var(--background-1) 0%, var(--background-2) 50%, #081628 100%); }
+  .container { max-width:1100px; margin:0 auto }
+  h1 { margin:0 0 0.6rem 0 }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem }
+  .card { background:var(--card-bg); padding:0.9rem; border-radius:12px; box-shadow: var(--card-shadow); border:1px solid rgba(255,255,255,0.03); }
+  .meta { color:var(--muted); font-size:0.9rem }
+  .votes { margin-top:0.6rem; display:flex; flex-direction:column; gap:0.4rem }
+  .vote { background: rgba(255,255,255,0.02); padding:0.45rem; border-radius:8px; display:flex; justify-content:space-between }
+  .empty { color:var(--muted) }
+
+  /* Footer styles are centralized in templates/footer.html */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Participants</h1>
+    <div id="list" class="grid">
+      <div class="empty">Loading participants...</div>
+    </div>
+  </div>
+
+  {{ template "footer" . }}
+
+  <script>
+
+    const el = id => document.getElementById(id);
+
+    async function loadParticipants() {
+      try {
+        const [usersRes, votesRes, nomsRes, catsRes] = await Promise.all([
+          fetch('/users', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+          fetch('/votes', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+          fetch('/nominateds', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+          fetch('/categories', { credentials: 'same-origin' }).catch(()=>({ok:false})),
+        ]);
+        if (!usersRes || !usersRes.ok) {
+          el('list').innerHTML = '<div class="empty">Failed to load participants</div>';
+          return;
+        }
+        const users = await usersRes.json();
+        let votes = [];
+        if (votesRes && votesRes.ok) votes = await votesRes.json();
+        let noms = [];
+        if (nomsRes && nomsRes.ok) noms = await nomsRes.json();
+        let cats = [];
+        if (catsRes && catsRes.ok) cats = await catsRes.json();
+
+        const nomById = {}; noms.forEach(n=>{ nomById[String(n.id)]=n });
+        const catById = {}; cats.forEach(c=>{ catById[String(c.id)]=c });
+
+        const list = el('list'); list.innerHTML = '';
+        users.forEach(u=>{
+          const c = document.createElement('div'); c.className='card';
+          const title = document.createElement('div'); title.innerHTML = '<div style="font-weight:700">'+(u.nickname||u.email)+'</div><div class="meta">'+(u.email||'')+'</div>';
+          c.appendChild(title);
+          const vwrap = document.createElement('div'); vwrap.className='votes';
+          const userVotes = Array.isArray(votes) ? votes.filter(v=>String(v.user_id)===String(u.id)||!v.user_id) : [];
+          if (!userVotes || userVotes.length===0) {
+            const e = document.createElement('div'); e.className='empty'; e.textContent='No votes or login required to see votes'; vwrap.appendChild(e);
+          } else {
+            userVotes.forEach(v=>{
+              const vi = document.createElement('div'); vi.className='vote';
+              const cat = catById[String(v.category_id)];
+              const nom = nomById[String(v.nominated_id)];
+              vi.innerHTML = '<div><div style="font-weight:700">'+(cat?cat.name:('Category '+v.category_id))+'</div><div class="meta">'+(nom?(nom.name||nom.movie_name):('Nominated '+v.nominated_id))+'</div></div><div class="meta">Voted</div>';
+              vwrap.appendChild(vi);
+            });
+          }
+          c.appendChild(vwrap);
+          list.appendChild(c);
+        });
+
+      } catch (err) {
+        el('list').innerHTML = '<div class="empty">Error: '+err.message+'</div>';
+      }
+    }
+
+    loadParticipants();
+  </script>
+</body>
+</html>
