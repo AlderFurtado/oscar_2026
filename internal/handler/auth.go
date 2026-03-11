@@ -119,6 +119,17 @@ func (h *Handler) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "invalid token subject", http.StatusUnauthorized)
 			return
 		}
+
+		// ensure the user still exists in the database (tokens may be stale after DB reset)
+		if h.userStore != nil {
+			if u, err := h.userStore.GetByID(sub); err != nil {
+				http.Error(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
+				return
+			} else if u == nil {
+				http.Error(w, "user not found", http.StatusUnauthorized)
+				return
+			}
+		}
 		ctx := context.WithValue(r.Context(), ctxKeyUserID, sub)
 		next(w, r.WithContext(ctx))
 	}

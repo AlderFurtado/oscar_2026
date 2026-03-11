@@ -20,6 +20,17 @@ func (h *Handler) AddVote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	// ensure the user exists (DB may have been reset)
+	if h.userStore != nil {
+		if u, err := h.userStore.GetByID(uid); err != nil {
+			http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+			return
+		} else if u == nil {
+			http.Error(w, "unauthorized: user not found", http.StatusUnauthorized)
+			return
+		}
+	}
 	// validate CSRF token (double-submit cookie)
 	if !h.validateCSRF(r) {
 		http.Error(w, "invalid csrf token", http.StatusForbidden)
