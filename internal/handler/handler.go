@@ -357,11 +357,12 @@ func (h *Handler) ListNominateds(w http.ResponseWriter, r *http.Request) {
 		MovieID    string `json:"movie_id"`
 		CategoryID string `json:"category_id"`
 		Name       string `json:"name"`
+		Image      string `json:"image,omitempty"`
 		MovieName  string `json:"movie_name,omitempty"`
 	}
 	res := make([]nominatedOut, 0, len(out))
 	for _, n := range out {
-		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
+		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name, Image: n.UrlImage}
 		// attempt to fetch movie title; if it fails keep MovieName empty
 		if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
 			no.MovieName = m.Title
@@ -420,12 +421,13 @@ func (h *Handler) ListNominatedsByCategory(w http.ResponseWriter, r *http.Reques
 		MovieID    string `json:"movie_id"`
 		CategoryID string `json:"category_id"`
 		Name       string `json:"name"`
+		Image      string `json:"image,omitempty"`
 		MovieName  string `json:"movie_name,omitempty"`
 	}
 
 	res := make([]nominatedOut, 0, len(out))
 	for _, n := range out {
-		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name}
+		no := nominatedOut{ID: n.ID, MovieID: n.MovieID, CategoryID: n.CategoryID, Name: n.Name, Image: n.UrlImage}
 		if m, err := h.movieStore.Get(n.MovieID); err == nil && m != nil {
 			no.MovieName = m.Title
 		}
@@ -498,11 +500,12 @@ func (h *Handler) CreateNominatedFromForm(w http.ResponseWriter, r *http.Request
 	movieIDStr := r.FormValue("movie_id")
 	categoryIDStr := r.FormValue("category_id")
 	name := r.FormValue("name")
+	urlImage := r.FormValue("url_image")
 	if movieIDStr == "" || categoryIDStr == "" || name == "" {
 		http.Error(w, "movie_id, category_id and name are required", http.StatusBadRequest)
 		return
 	}
-	n := models.Nominated{MovieID: movieIDStr, CategoryID: categoryIDStr, Name: name}
+	n := models.Nominated{MovieID: movieIDStr, CategoryID: categoryIDStr, Name: name, UrlImage: urlImage}
 	id, err := h.nominatedStore.Insert(&n)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)

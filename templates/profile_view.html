@@ -11,7 +11,7 @@
     --yellow:#f59e0b;
     --yellow-strong:#fb923c;
     --footer-safe: 104px;
-    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --card-shadow: 0 12px 30px #02061799;
     --background-1:#071121;
     --background-2:#0b1224;
     --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
@@ -71,6 +71,7 @@
 
       <div style="margin-top:0.9rem">
         <div style="font-size:0.95rem; color:var(--muted)">Votes done</div>
+        <div id="voteSummary" class="meta" style="margin-top:0.3rem">Loading...</div>
         <div id="votes" class="votes">
           <div class="empty">Loading votes...</div>
         </div>
@@ -123,6 +124,20 @@
 
         const cont = el('votes');
         cont.innerHTML = '';
+        const summaryEl = el('voteSummary');
+
+        // determine total possible votes: prefer categories count, fallback to unique categories in nominateds
+        let totalPossible = 0;
+        if (Array.isArray(categories) && categories.length > 0) {
+          totalPossible = categories.length;
+        } else if (Array.isArray(noms) && noms.length > 0) {
+          const s = new Set();
+          noms.forEach(n => s.add(String(n.category_id)));
+          totalPossible = s.size;
+        }
+
+        const votesCount = Array.isArray(userVotes) ? userVotes.length : 0;
+        if (summaryEl) summaryEl.textContent = votesCount + ' / ' + totalPossible + ' votes';
         if (!Array.isArray(userVotes) || userVotes.length === 0) {
           cont.innerHTML = '<div class="empty">You have not voted yet.</div>';
           return;

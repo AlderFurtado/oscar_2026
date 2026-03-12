@@ -55,22 +55,35 @@
   .msg.err { background: rgba(255,20,60,0.06); color:#ffb4c6 }
 
   /* grid of nominated cards */
-  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.6rem; margin-top:1.4rem }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1rem; grid-auto-flow: row; align-items: start; margin-top:1.4rem }
+
+  /* tile-style card: square tiles with a background image and an overlay for text/actions */
   .card {
-    background: var(--card-bg);
-    border-radius:14px;
-    padding:1rem;
+    position: relative;
+    aspect-ratio: 1 / 1; /* keep square */
+    border-radius:12px;
+    overflow: hidden;
     box-shadow: var(--card-shadow);
-    display:flex; flex-direction:column; gap:0.6rem;
-    color:var(--accent);
     transform: translateY(0);
     transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
-    border: 1px solid rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.04);
+    background-color: rgba(0,0,0,0.08);
+    background-size: cover;
+    background-position: center center;
+    display:flex; align-items:flex-end;
   }
-  .card:hover { transform: translateY(-8px) scale(1.01); box-shadow: 0 20px 40px rgba(2,6,23,0.7); }
-  .card .title { font-weight:700; font-size:1.02rem }
-  .card .meta { color:var(--muted); font-size:0.9rem }
-  .card .actions { margin-top:auto; display:flex; gap:0.5rem; justify-content:flex-end }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 18px 36px rgba(2,6,23,0.72); }
+
+  .card-overlay {
+    backdrop-filter: blur(6px);
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+    color: var(--accent);
+  }
+  .card-title { font-weight:700; font-size:0.95rem; margin-bottom:0.3rem }
+  .card-meta { color:var(--muted); font-size:0.85rem }
+  .card-actions { display:flex; gap:0.5rem; justify-content:flex-end; margin-top:0.5rem }
 
   .btn-primary {
     background: linear-gradient(180deg, var(--yellow) 0%, var(--yellow-strong) 100%);
@@ -80,13 +93,13 @@
   .btn-primary:hover { transform: translateY(-3px) scale(1.02); }
 
   .btn-selected {
-    background: linear-gradient(180deg, #ffd69a, var(--yellow-strong));
+    background: linear-gradient(180deg, #04ba71, #678000);
     color:#071021; border:none; padding:0.48rem 0.82rem; border-radius:10px; cursor:default;
   }
   .btn-selected[disabled] { opacity:0.98 }
 
   .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.06); padding:0.35rem 0.6rem; border-radius:8px }
-  @media (max-width:520px) { body { padding:1rem } .grid { gap:1rem } }
+  @media (max-width:520px) { body { padding:1rem } .grid { gap:1rem } .card {  width: 100%;} }
   
   /* Footer styles are centralized in templates/footer.html */
 
@@ -102,7 +115,7 @@
       </div>
     </div>
     <p id="msg">Loading...</p>
-    <div id="list"></div>
+  <div id="list" class="grid"></div>
   </div>
 
   {{ template "auth_modal" . }}
@@ -183,27 +196,31 @@
         const list = el('list');
         list.innerHTML = '';
         if (!Array.isArray(data) || data.length === 0) { list.textContent = 'No nominations for this category.'; return; }
-        // render as cards
+        // render as square image tiles; use the provided poster URL as tile background
+        const posterUrl = 'https://conteudo.imguol.com.br/c/entretenimento/50/2025/04/10/o-agente-secreto-filme-de-kleber-mendonca-filho-estrelado-por-wagner-moura-1744281707161_v2_3x4.jpg';
         data.forEach(n => {
           const d = document.createElement('div');
           d.className = 'card';
+          // set tile background: if the nominated record includes an image field use it, otherwise default to posterUrl
+          const bg = n.image || n.poster || posterUrl;
+          d.style.backgroundImage = `url('${bg}')`;
+
+          const overlay = document.createElement('div');
+          overlay.className = 'card-overlay';
           const title = document.createElement('div');
-          title.className = 'title';
-          // show nominee name when present, otherwise fall back to the movie title
-          title.textContent = n.name || n.movie_name;
-          d.appendChild(title);
+          title.className = 'card-title';
+          title.textContent = n.name || n.movie_name || 'Nominee';
+          overlay.appendChild(title);
           const meta = document.createElement('div');
-          meta.className = 'meta';
-          // prefer the returned movie name (movie_name); fall back to id if not present
+          meta.className = 'card-meta';
           meta.textContent = 'From: ' + (n.movie_name || n.movie_id);
-          d.appendChild(meta);
+          overlay.appendChild(meta);
+
           const actions = document.createElement('div');
-          actions.className = 'actions';
+          actions.className = 'card-actions';
           const btn = document.createElement('button');
-          // if user already voted in this category, mark the nominated choice
           if (String(votedMap[String(categoryId)]) === String(n.id)) {
             btn.textContent = 'Voted';
-            // show orange selected state for already-voted choice
             btn.className = 'btn-selected';
             btn.disabled = true;
           } else {
@@ -212,7 +229,9 @@
           }
           btn.addEventListener('click', () => vote(n.id, btn));
           actions.appendChild(btn);
-          d.appendChild(actions);
+          overlay.appendChild(actions);
+
+          d.appendChild(overlay);
           list.appendChild(d);
         });
       } catch (err) {

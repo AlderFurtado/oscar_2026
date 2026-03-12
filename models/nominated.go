@@ -7,4 +7,6 @@ type Nominated struct {
 	MovieID    string `json:"movie_id"`
 	CategoryID string `json:"category_id"`
 	Name       string `json:"name"`
+	// UrlImage is an optional URL pointing to a poster or image for the nomination.
+	UrlImage string `json:"url_image,omitempty"`
 }

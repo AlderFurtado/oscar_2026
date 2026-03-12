@@ -38,6 +38,9 @@
         {{end}}
       </select>
 
+      <label for="url_image">Image URL (optional)</label>
+      <input id="url_image" name="url_image" placeholder="https://..." />
+
       <button type="submit">Create Nomination</button>
     </form>
     <div id="msg" role="status" style="margin-top:1rem"></div>
@@ -47,8 +50,9 @@
       document.getElementById('nomForm').addEventListener('submit', async function (e) {
         e.preventDefault();
         const name = document.getElementById('name').value;
-        const movie_id = parseInt(document.getElementById('movie').value, 10);
-        const category_id = parseInt(document.getElementById('category').value, 10);
+  const movie_id = document.getElementById('movie').value;
+  const category_id = document.getElementById('category').value;
+  const url_image = document.getElementById('url_image').value;
         const msg = document.getElementById('msg');
         msg.textContent = '';
         try {
@@ -57,7 +61,7 @@
               method: 'POST',
               credentials: 'same-origin',
               headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-              body: JSON.stringify({ name, movie_id, category_id })
+              body: JSON.stringify({ name, movie_id, category_id, url_image })
             });
           if (!res.ok) {
             const txt = await res.text();

@@ -19,7 +19,16 @@ func (s *SQLNominatedStore) Insert(n *models.Nominated) (string, error) {
 	if n.Name == "" {
 		name = nil
 	}
-	err := s.db.QueryRow("INSERT INTO nominees (movie_id, category_id, nominee_name) VALUES ($1,$2,$3) RETURNING id", n.MovieID, n.CategoryID, name).Scan(&id)
+	// If UrlImage is empty, omit it from the INSERT so DB default applies.
+	if n.UrlImage == "" {
+		err := s.db.QueryRow("INSERT INTO nominees (movie_id, category_id, nominee_name) VALUES ($1,$2,$3) RETURNING id", n.MovieID, n.CategoryID, name).Scan(&id)
+		if err != nil {
+			return "", fmt.Errorf("insert nominated: %w", err)
+		}
+		return id, nil
+	}
+	// url provided -> include it in INSERT
+	err := s.db.QueryRow("INSERT INTO nominees (movie_id, category_id, nominee_name, url_image) VALUES ($1,$2,$3,$4) RETURNING id", n.MovieID, n.CategoryID, name, n.UrlImage).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("insert nominated: %w", err)
 	}
@@ -34,12 +43,18 @@ func (s *SQLNominatedStore) InsertMany(ns []models.Nominated) ([]string, error) 
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	stmt, err := tx.Prepare("INSERT INTO nominees (movie_id, category_id, nominee_name) VALUES ($1,$2,$3) RETURNING id")
+	stmtWithUrl, err := tx.Prepare("INSERT INTO nominees (movie_id, category_id, nominee_name, url_image) VALUES ($1,$2,$3,$4) RETURNING id")
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("prepare: %w", err)
 	}
-	defer stmt.Close()
+	defer stmtWithUrl.Close()
+	stmtNoUrl, err := tx.Prepare("INSERT INTO nominees (movie_id, category_id, nominee_name) VALUES ($1,$2,$3) RETURNING id")
+	if err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("prepare no-url: %w", err)
+	}
+	defer stmtNoUrl.Close()
 	ids := make([]string, 0, len(ns))
 	for _, n := range ns {
 		var id string
@@ -47,9 +62,16 @@ func (s *SQLNominatedStore) InsertMany(ns []models.Nominated) ([]string, error) 
 		if n.Name == "" {
 			name = nil
 		}
-		if err := stmt.QueryRow(n.MovieID, n.CategoryID, name).Scan(&id); err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("insert many nominated: %w", err)
+		if n.UrlImage == "" {
+			if err := stmtNoUrl.QueryRow(n.MovieID, n.CategoryID, name).Scan(&id); err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("insert many nominated: %w", err)
+			}
+		} else {
+			if err := stmtWithUrl.QueryRow(n.MovieID, n.CategoryID, name, n.UrlImage).Scan(&id); err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("insert many nominated: %w", err)
+			}
 		}
 		ids = append(ids, id)
 	}
@@ -61,9 +83,10 @@ func (s *SQLNominatedStore) InsertMany(ns []models.Nominated) ([]string, error) 
 
 func (s *SQLNominatedStore) Get(id string) (*models.Nominated, error) {
 	var n models.Nominated
-	row := s.db.QueryRow("SELECT id, movie_id, category_id, nominee_name FROM nominees WHERE id=$1", id)
+	row := s.db.QueryRow("SELECT id, movie_id, category_id, nominee_name, url_image FROM nominees WHERE id=$1", id)
 	var name sql.NullString
-	if err := row.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name); err != nil {
+	var url sql.NullString
+	if err := row.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name, &url); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -74,11 +97,16 @@ func (s *SQLNominatedStore) Get(id string) (*models.Nominated, error) {
 	} else {
 		n.Name = ""
 	}
+	if url.Valid {
+		n.UrlImage = url.String
+	} else {
+		n.UrlImage = ""
+	}
 	return &n, nil
 }
 
 func (s *SQLNominatedStore) List() ([]models.Nominated, error) {
-	rows, err := s.db.Query("SELECT id, movie_id, category_id, nominee_name FROM nominees ORDER BY created_at DESC LIMIT 100")
+	rows, err := s.db.Query("SELECT id, movie_id, category_id, nominee_name, url_image FROM nominees ORDER BY created_at DESC LIMIT 100")
 	if err != nil {
 		return nil, fmt.Errorf("list nominated: %w", err)
 	}
@@ -87,13 +115,19 @@ func (s *SQLNominatedStore) List() ([]models.Nominated, error) {
 	for rows.Next() {
 		var n models.Nominated
 		var name sql.NullString
-		if err := rows.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name); err != nil {
+		var url sql.NullString
+		if err := rows.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name, &url); err != nil {
 			return nil, fmt.Errorf("scan nominated: %w", err)
 		}
 		if name.Valid {
 			n.Name = name.String
 		} else {
 			n.Name = ""
+		}
+		if url.Valid {
+			n.UrlImage = url.String
+		} else {
+			n.UrlImage = ""
 		}
 		out = append(out, n)
 	}
@@ -104,7 +138,7 @@ func (s *SQLNominatedStore) List() ([]models.Nominated, error) {
 // ListByCategory returns nominated rows filtered by category_id using a DB-level WHERE clause.
 func (s *SQLNominatedStore) ListByCategory(categoryID string) ([]models.Nominated, error) {
 	log.Printf("sqlnominatedstore: ListByCategory(category=%s) start", categoryID)
-	qry := `SELECT id, movie_id, category_id, nominee_name
+	qry := `SELECT id, movie_id, category_id, nominee_name, url_image
 FROM nominees
 WHERE category_id = $1
 ORDER BY created_at DESC
@@ -121,7 +155,8 @@ LIMIT 100`
 	for rows.Next() {
 		var n models.Nominated
 		var name sql.NullString
-		if err := rows.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name); err != nil {
+		var url sql.NullString
+		if err := rows.Scan(&n.ID, &n.MovieID, &n.CategoryID, &name, &url); err != nil {
 			log.Printf("sqlnominatedstore: ListByCategory scan error at row %d: %v", i, err)
 			return nil, err
 		}
@@ -129,6 +164,11 @@ LIMIT 100`
 			n.Name = name.String
 		} else {
 			n.Name = ""
+		}
+		if url.Valid {
+			n.UrlImage = url.String
+		} else {
+			n.UrlImage = ""
 		}
 		log.Printf("sqlnominatedstore: ListByCategory scanned row %d: id=%s movie_id=%s category_id=%s", i, n.ID, n.MovieID, n.CategoryID)
 		out = append(out, n)
