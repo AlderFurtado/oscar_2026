@@ -6,9 +6,10 @@
   .nav-btn:hover { transform: translateY(-4px); background: rgba(255,255,255,0.02); color: white }
   .nav-btn .icon { width:22px; height:22px; fill:currentColor; opacity:0.95 }
   .nav-btn .label { font-size:0.8rem; color:var(--muted); line-height:1 }
+  .nav-btn.nav-btn.selected .label { color: black; }
   .nav-btn.selected { background: linear-gradient(180deg, var(--yellow), var(--yellow-strong)); color:#071021 }
   @media (min-width:900px) { .app-footer { margin-top:32px; width: auto; } }
-  @media (max-width:520px) { .app-footer { margin-left:10px; margin-right:10px; border-radius:12px; width: auto; } .nav-btn .label { font-size:0.72rem } }
+  @media (max-width:520px) { .app-footer { margin-left:10px; margin-right:10px; border-radius:12px; width: auto; } .nav-btn .label { font-size:0.72rem; } }
   </style>
   <!-- footer navigation -->
   <footer class="app-footer" role="navigation" aria-label="Main navigation">

@@ -25,6 +25,7 @@
   .meta { color:var(--muted); font-size:0.9rem }
   .votes { margin-top:0.6rem; display:flex; flex-direction:column; gap:0.4rem }
   .vote { background: rgba(255,255,255,0.02); padding:0.45rem; border-radius:8px; display:flex; justify-content:space-between }
+  .vote { background: rgba(255,255,255,0.02); padding:0.45rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:0.6rem }
   .empty { color:var(--muted) }
 
   /* Footer styles are centralized in templates/footer.html */
@@ -70,18 +71,46 @@
         const list = el('list'); list.innerHTML = '';
         users.forEach(u=>{
           const c = document.createElement('div'); c.className='card';
-          const title = document.createElement('div'); title.innerHTML = '<div style="font-weight:700">'+(u.nickname||u.email)+'</div><div class="meta">'+(u.email||'')+'</div>';
+            const title = document.createElement('div');
+            // do not expose user email in participants list; show nickname or fallback label
+            title.innerHTML = '<div style="font-weight:700">'+(u.nickname || 'Participant')+'</div>';
           c.appendChild(title);
           const vwrap = document.createElement('div'); vwrap.className='votes';
           const userVotes = Array.isArray(votes) ? votes.filter(v=>String(v.user_id)===String(u.id)||!v.user_id) : [];
           if (!userVotes || userVotes.length===0) {
             const e = document.createElement('div'); e.className='empty'; e.textContent='No votes or login required to see votes'; vwrap.appendChild(e);
           } else {
+            const fallbackThumb = 'https://conteudo.imguol.com.br/c/entretenimento/50/2025/04/10/o-agente-secreto-filme-de-kleber-mendonca-filho-estrelado-por-wagner-moura-1744281707161_v2_3x4.jpg';
             userVotes.forEach(v=>{
               const vi = document.createElement('div'); vi.className='vote';
               const cat = catById[String(v.category_id)];
               const nom = nomById[String(v.nominated_id)];
-              vi.innerHTML = '<div><div style="font-weight:700">'+(cat?cat.name:('Category '+v.category_id))+'</div><div class="meta">'+(nom?(nom.name||nom.movie_name):('Nominated '+v.nominated_id))+'</div></div><div class="meta">Voted</div>';
+
+              const left = document.createElement('div');
+              left.style.display = 'flex';
+              left.style.alignItems = 'center';
+              left.style.gap = '0.6rem';
+
+              const imgEl = document.createElement('img');
+              imgEl.style.width = '48px';
+              imgEl.style.height = '48px';
+              imgEl.style.objectFit = 'cover';
+              imgEl.style.borderRadius = '8px';
+              imgEl.loading = 'lazy';
+              const imgSrc = (nom && (nom.image || nom.url_image || nom.poster)) || fallbackThumb;
+              imgEl.src = imgSrc;
+              imgEl.alt = nom ? (nom.name || nom.movie_name || 'Nominee') : 'Nominee';
+
+              const txt = document.createElement('div');
+              txt.innerHTML = '<div style="font-weight:700">'+(cat?cat.name:('Category '+v.category_id))+'</div><div class="meta">'+(nom?(nom.name||nom.movie_name):('Nominated '+v.nominated_id))+'</div>';
+
+              left.appendChild(imgEl);
+              left.appendChild(txt);
+
+              const right = document.createElement('div'); right.className = 'meta'; right.textContent = 'Voted';
+
+              vi.appendChild(left);
+              vi.appendChild(right);
               vwrap.appendChild(vi);
             });
           }
