@@ -196,13 +196,13 @@
         const list = el('list');
         list.innerHTML = '';
         if (!Array.isArray(data) || data.length === 0) { list.textContent = 'No nominations for this category.'; return; }
-        // render as square image tiles; use the provided poster URL as tile background
-        const posterUrl = 'https://conteudo.imguol.com.br/c/entretenimento/50/2025/04/10/o-agente-secreto-filme-de-kleber-mendonca-filho-estrelado-por-wagner-moura-1744281707161_v2_3x4.jpg';
+        // render as square image tiles; prefer nominated's url_image (n.url_image or n.image), then movie poster, then fallback
+        const fallbackPoster = 'https://s2-gshow.glbimg.com/KIfsgPzVx8g-zWDxOSGy4llwWLw=/0x0:1080x1182/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_e84042ef78cb4708aeebdf1c68c6cbd6/internal_photos/bs/2026/y/S/gpOY25TAizQq9IcyUHeg/theacademy-20260102-150058-1663833045.jpg';
         data.forEach(n => {
           const d = document.createElement('div');
           d.className = 'card';
           // set tile background: if the nominated record includes an image field use it, otherwise default to posterUrl
-          const bg = n.image || n.poster || posterUrl;
+          const bg = n.image || n.url_image || n.poster || fallbackPoster;
           d.style.backgroundImage = `url('${bg}')`;
 
           const overlay = document.createElement('div');
