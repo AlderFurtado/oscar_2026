@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Leaderboard - Oscar 2026</title>
+  <style>
+  :root{
+    --muted:#9ca3af;
+    --accent:#f3f4f6;
+    --yellow:#f59e0b;
+    --yellow-strong:#fb923c;
+    --gold:#ffd700;
+    --silver:#c0c0c0;
+    --bronze:#cd7f32;
+    --footer-safe: 104px;
+    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --background-1:#071121;
+    --background-2:#0b1224;
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, Roboto, Arial;
+    padding: 2.5rem;
+    padding-bottom: var(--footer-safe);
+    margin: 0;
+    color: var(--accent);
+    background: linear-gradient(135deg, var(--background-1) 0%, var(--background-2) 50%, #081628 100%);
+    background-size: 300% 300%;
+    animation: bgShift 18s ease infinite;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container { max-width: 800px; margin: 0 auto; }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.6px; }
+  
+  .trophy { font-size: 2rem; margin-right: 0.5rem; }
+
+  .leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .entry {
+    background: var(--card-bg);
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(255,255,255,0.03);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .entry:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 40px rgba(2,6,23,0.7);
+  }
+
+  .entry.gold {
+    border: 1px solid var(--gold);
+    background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.02));
+  }
+
+  .entry.silver {
+    border: 1px solid var(--silver);
+    background: linear-gradient(135deg, rgba(192,192,192,0.08), rgba(192,192,192,0.02));
+  }
+
+  .entry.bronze {
+    border: 1px solid var(--bronze);
+    background: linear-gradient(135deg, rgba(205,127,50,0.08), rgba(205,127,50,0.02));
+  }
+
+  .rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .rank.gold { color: var(--gold); }
+  .rank.silver { color: var(--silver); }
+  .rank.bronze { color: var(--bronze); }
+
+  .medal {
+    font-size: 1.8rem;
+    min-width: 50px;
+    text-align: center;
+  }
+
+  .user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .nickname {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .stats {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .score {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+  }
+
+  .score-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--yellow);
+  }
+
+  .score-label {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .percentage {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .empty {
+    color: var(--muted);
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .my-score {
+    background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05));
+    border: 1px solid var(--yellow);
+    padding: 1.2rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .my-score-title {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+  }
+
+  .my-score-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--yellow);
+  }
+
+  .my-score-details {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+  }
+
+  .no-winners {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    color: var(--muted);
+  }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><span class="trophy">🏆</span>Leaderboard</h1>
+    </div>
+
+    <div id="my-score-section" class="my-score" style="display:none;">
+      <div class="my-score-title">Your Score</div>
+      <div id="my-score-value" class="my-score-value">-</div>
+      <div id="my-score-details" class="my-score-details"></div>
+    </div>
+
+    <div id="leaderboard" class="leaderboard">
+      <div class="empty">Loading leaderboard...</div>
+    </div>
+  </div>
+
+  {{ template "footer" . }}
+
+  <script>
+    const el = id => document.getElementById(id);
+
+    function getMedal(rank) {
+      if (rank === 1) return '🥇';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return null;
+    }
+
+    function getRankClass(rank) {
+      if (rank === 1) return 'gold';
+      if (rank === 2) return 'silver';
+      if (rank === 3) return 'bronze';
+      return '';
+    }
+
+    async function loadMyScore() {
+      try {
+        const res = await fetch('/score', { credentials: 'same-origin' });
+        if (res.ok) {
+          const data = await res.json();
+          const section = el('my-score-section');
+          section.style.display = 'block';
+          el('my-score-value').textContent = data.correct_votes + ' / ' + data.total_votes;
+          const pct = data.total_votes > 0 ? Math.round((data.correct_votes / data.total_votes) * 100) : 0;
+          el('my-score-details').textContent = pct + '% correct predictions';
+        }
+      } catch (err) {
+        // User not logged in, hide my score section
+      }
+    }
+
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch('/leaderboard', { credentials: 'same-origin' });
+        if (!res.ok) {
+          el('leaderboard').innerHTML = '<div class="empty">Failed to load leaderboard</div>';
+          return;
+        }
+        
+        const scores = await res.json();
+        const container = el('leaderboard');
+        
+        if (!scores || scores.length === 0) {
+          container.innerHTML = '<div class="no-winners">No winners have been announced yet. Check back after the ceremony!</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        
+        let currentRank = 0;
+        let lastScore = -1;
+        let skipCount = 0;
+
+        scores.forEach((score, index) => {
+          // Handle ties - same score gets same rank
+          if (score.correct_votes !== lastScore) {
+            currentRank = index + 1;
+            lastScore = score.correct_votes;
+          }
+
+          const entry = document.createElement('div');
+          entry.className = 'entry ' + getRankClass(currentRank);
+
+          const medal = getMedal(currentRank);
+          const rankHtml = medal 
+            ? '<div class="medal">' + medal + '</div>'
+            : '<div class="rank">#' + currentRank + '</div>';
+
+          const pct = score.total_votes > 0 
+            ? Math.round((score.correct_votes / score.total_votes) * 100) 
+            : 0;
+
+          entry.innerHTML = `
+            ${rankHtml}
+            <div class="user-info">
+              <div class="nickname">${score.nickname || 'Anonymous'}</div>
+              <div class="stats">${score.total_votes} predictions made</div>
+            </div>
+            <div class="score">
+              <div class="score-value">${score.correct_votes}</div>
+              <div class="score-label">correct</div>
+              <div class="percentage">${pct}%</div>
+            </div>
+          `;
+
+          container.appendChild(entry);
+        });
+
+      } catch (err) {
+        el('leaderboard').innerHTML = '<div class="empty">Error: ' + err.message + '</div>';
+      }
+    }
+
+    // Load both
+    loadMyScore();
+    loadLeaderboard();
+  </script>
+</body>
+</html>

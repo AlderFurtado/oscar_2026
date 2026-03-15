@@ -63,3 +63,53 @@ func (s *SQLVoteStore) ListByUser(userID string) ([]models.Vote, error) {
 	}
 	return out, nil
 }
+
+// GetUserScore returns (correct votes, total votes, error) for a user by comparing with winners table.
+func (s *SQLVoteStore) GetUserScore(userID string) (int, int, error) {
+	var correct, total int
+	// Count total votes by user
+	err := s.db.QueryRow("SELECT COUNT(*) FROM votes WHERE user_id = $1", userID).Scan(&total)
+	if err != nil {
+		return 0, 0, fmt.Errorf("count votes: %w", err)
+	}
+	// Count correct votes (where nominated_id matches a winner)
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM votes v
+		INNER JOIN winners w ON v.nominated_id = w.nominated_id
+		WHERE v.user_id = $1
+	`, userID).Scan(&correct)
+	if err != nil {
+		return 0, 0, fmt.Errorf("count correct votes: %w", err)
+	}
+	return correct, total, nil
+}
+
+// GetAllScores returns scores for all users who have voted, ordered by correct votes descending.
+func (s *SQLVoteStore) GetAllScores() ([]UserScore, error) {
+	rows, err := s.db.Query(`
+		SELECT 
+			u.id,
+			u.nickname,
+			COUNT(v.id) AS total_votes,
+			COUNT(w.id) AS correct_votes
+		FROM users u
+		INNER JOIN votes v ON u.id = v.user_id
+		LEFT JOIN winners w ON v.nominated_id = w.nominated_id
+		GROUP BY u.id, u.nickname
+		ORDER BY correct_votes DESC, total_votes DESC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("get all scores: %w", err)
+	}
+	defer rows.Close()
+
+	var scores []UserScore
+	for rows.Next() {
+		var s UserScore
+		if err := rows.Scan(&s.UserID, &s.Nickname, &s.TotalVotes, &s.CorrectVotes); err != nil {
+			return nil, fmt.Errorf("scan score: %w", err)
+		}
+		scores = append(scores, s)
+	}
+	return scores, rows.Err()
+}

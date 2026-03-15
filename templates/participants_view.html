@@ -80,7 +80,7 @@
           if (!userVotes || userVotes.length===0) {
             const e = document.createElement('div'); e.className='empty'; e.textContent='No votes or login required to see votes'; vwrap.appendChild(e);
           } else {
-            const fallbackThumb = 'https://conteudo.imguol.com.br/c/entretenimento/50/2025/04/10/o-agente-secreto-filme-de-kleber-mendonca-filho-estrelado-por-wagner-moura-1744281707161_v2_3x4.jpg';
+            const fallbackThumb = 'https://s2-gshow.glbimg.com/KIfsgPzVx8g-zWDxOSGy4llwWLw=/0x0:1080x1182/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_e84042ef78cb4708aeebdf1c68c6cbd6/internal_photos/bs/2026/y/S/gpOY25TAizQq9IcyUHeg/theacademy-20260102-150058-1663833045.jpg';
             userVotes.forEach(v=>{
               const vi = document.createElement('div'); vi.className='vote';
               const cat = catById[String(v.category_id)];

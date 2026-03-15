@@ -119,6 +119,11 @@ func main() {
 	http.HandleFunc("/add_vote", h.RequireAuth(h.AddVote))
 	http.HandleFunc("/votes", h.RequireAuth(h.ListVotes))
 
+	// score routes
+	http.HandleFunc("/score", h.RequireAuth(h.GetMyScore))
+	http.HandleFunc("/leaderboard", h.GetLeaderboard)
+	http.HandleFunc("/leaderboard/view", h.ServeLeaderboardView)
+
 	// winner routes (admin)
 	http.HandleFunc("/winners/view", h.ServeWinnersView)
 	http.HandleFunc("/add_winner", h.AddWinner)

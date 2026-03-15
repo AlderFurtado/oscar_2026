@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"html/template"
 	"io"
 	"net/http"
 	"time"
@@ -148,4 +149,66 @@ func (h *Handler) GetDeadline(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
+}
+
+// GetMyScore returns the current user's score (correct votes vs total votes).
+// GET /score -> { "correct_votes": X, "total_votes": Y }
+func (h *Handler) GetMyScore(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	uid, ok := GetUserIDFromContext(r.Context())
+	if !ok || uid == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	correct, total, err := h.voteStore.GetUserScore(uid)
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	out := struct {
+		CorrectVotes int `json:"correct_votes"`
+		TotalVotes   int `json:"total_votes"`
+	}{
+		CorrectVotes: correct,
+		TotalVotes:   total,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// GetLeaderboard returns all users' scores ordered by correct votes.
+// GET /leaderboard -> [{ "user_id": "...", "nickname": "...", "correct_votes": X, "total_votes": Y }, ...]
+func (h *Handler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	scores, err := h.voteStore.GetAllScores()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(scores)
+}
+
+// ServeLeaderboardView serves the leaderboard HTML page.
+func (h *Handler) ServeLeaderboardView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tpl, err := template.ParseFiles("templates/leaderboard_view.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.Execute(w, nil); err != nil {
+		http.Error(w, "template render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
