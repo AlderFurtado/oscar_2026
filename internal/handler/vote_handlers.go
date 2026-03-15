@@ -17,7 +17,7 @@ func (h *Handler) AddVote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Voting deadline: votes allowed only until 12:00 PM (noon) UTC-3 on March 15, 2026
+	// Voting deadline: votes allowed only until 7:00 PM (19:00) UTC-3 on March 15, 2026
 	// After that time, voting is closed.
 	loc, err := time.LoadLocation("America/Sao_Paulo")
 	if err != nil {
@@ -122,7 +122,7 @@ var VotingDeadline = func() time.Time {
 	if err != nil {
 		loc = time.FixedZone("UTC-3", -3*60*60)
 	}
-	return time.Date(2026, time.March, 15, 12, 0, 0, 0, loc)
+	return time.Date(2026, time.March, 15, 19, 0, 0, 0, loc)
 }()
 
 // GetDeadline returns the voting deadline as JSON so the frontend can display a countdown.
