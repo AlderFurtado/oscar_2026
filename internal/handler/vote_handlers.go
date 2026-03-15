@@ -152,7 +152,8 @@ func (h *Handler) GetDeadline(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMyScore returns the current user's score (correct votes vs total votes).
-// GET /score -> { "correct_votes": X, "total_votes": Y }
+// GET /score -> { "points": X, "max_points": Y }
+// Points: Best Picture=3, Actor/Actress in Leading Role=2, others=1
 func (h *Handler) GetMyScore(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -163,24 +164,24 @@ func (h *Handler) GetMyScore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	correct, total, err := h.voteStore.GetUserScore(uid)
+	points, maxPoints, err := h.voteStore.GetUserScore(uid)
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	out := struct {
-		CorrectVotes int `json:"correct_votes"`
-		TotalVotes   int `json:"total_votes"`
+		Points    int `json:"points"`
+		MaxPoints int `json:"max_points"`
 	}{
-		CorrectVotes: correct,
-		TotalVotes:   total,
+		Points:    points,
+		MaxPoints: maxPoints,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
 }
 
-// GetLeaderboard returns all users' scores ordered by correct votes.
-// GET /leaderboard -> [{ "user_id": "...", "nickname": "...", "correct_votes": X, "total_votes": Y }, ...]
+// GetLeaderboard returns all users' scores ordered by points.
+// GET /leaderboard -> [{ "user_id": "...", "nickname": "...", "points": X, "max_points": Y, ... }, ...]
 func (h *Handler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

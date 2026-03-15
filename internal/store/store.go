@@ -67,18 +67,21 @@ type VoteStore interface {
 	Get(id int64) (*models.Vote, error)
 	// ListByUser returns votes for a given user UUID.
 	ListByUser(userID string) ([]models.Vote, error)
-	// GetUserScore returns the number of correct votes for a user (matching winners).
+	// GetUserScore returns the points and max points for a user (matching winners).
+	// Points: Best Picture=3, Actor/Actress in Leading Role=2, others=1
 	GetUserScore(userID string) (int, int, error)
 	// GetAllScores returns scores for all users who voted.
 	GetAllScores() ([]UserScore, error)
 }
 
-// UserScore represents a user's voting score.
+// UserScore represents a user's voting score with weighted points.
 type UserScore struct {
 	UserID       string `json:"user_id"`
 	Nickname     string `json:"nickname"`
 	CorrectVotes int    `json:"correct_votes"`
 	TotalVotes   int    `json:"total_votes"`
+	Points       int    `json:"points"`
+	MaxPoints    int    `json:"max_points"`
 }
 
 // WinnerStore defines storage operations for winners.

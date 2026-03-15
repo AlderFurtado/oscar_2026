@@ -238,9 +238,9 @@
           const data = await res.json();
           const section = el('my-score-section');
           section.style.display = 'block';
-          el('my-score-value').textContent = data.correct_votes + ' / ' + data.total_votes;
-          const pct = data.total_votes > 0 ? Math.round((data.correct_votes / data.total_votes) * 100) : 0;
-          el('my-score-details').textContent = pct + '% correct predictions';
+          el('my-score-value').textContent = data.points + ' / ' + data.max_points + ' pts';
+          const pct = data.max_points > 0 ? Math.round((data.points / data.max_points) * 100) : 0;
+          el('my-score-details').textContent = pct + '% of possible points';
         }
       } catch (err) {
         // User not logged in, hide my score section
@@ -270,10 +270,10 @@
         let skipCount = 0;
 
         scores.forEach((score, index) => {
-          // Handle ties - same score gets same rank
-          if (score.correct_votes !== lastScore) {
+          // Handle ties - same points gets same rank
+          if (score.points !== lastScore) {
             currentRank = index + 1;
-            lastScore = score.correct_votes;
+            lastScore = score.points;
           }
 
           const entry = document.createElement('div');
@@ -284,20 +284,19 @@
             ? '<div class="medal">' + medal + '</div>'
             : '<div class="rank">#' + currentRank + '</div>';
 
-          const pct = score.total_votes > 0 
-            ? Math.round((score.correct_votes / score.total_votes) * 100) 
+          const pct = score.max_points > 0 
+            ? Math.round((score.points / score.max_points) * 100) 
             : 0;
 
           entry.innerHTML = `
             ${rankHtml}
             <div class="user-info">
               <div class="nickname">${score.nickname || 'Anonymous'}</div>
-              <div class="stats">${score.total_votes} predictions made</div>
+              <div class="stats">${score.correct_votes}/${score.total_votes} correct • ${pct}%</div>
             </div>
             <div class="score">
-              <div class="score-value">${score.correct_votes}</div>
-              <div class="score-label">correct</div>
-              <div class="percentage">${pct}%</div>
+              <div class="score-value">${score.points}</div>
+              <div class="score-label">points</div>
             </div>
           `;
 

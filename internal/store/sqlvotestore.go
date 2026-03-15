@@ -64,39 +64,82 @@ func (s *SQLVoteStore) ListByUser(userID string) ([]models.Vote, error) {
 	return out, nil
 }
 
-// GetUserScore returns (correct votes, total votes, error) for a user by comparing with winners table.
+// GetUserScore returns (points, max_points, error) for a user by comparing with winners table.
+// Points: Best Picture=3, Actor/Actress in Leading Role=2, others=1
 func (s *SQLVoteStore) GetUserScore(userID string) (int, int, error) {
-	var correct, total int
-	// Count total votes by user
-	err := s.db.QueryRow("SELECT COUNT(*) FROM votes WHERE user_id = $1", userID).Scan(&total)
-	if err != nil {
-		return 0, 0, fmt.Errorf("count votes: %w", err)
-	}
-	// Count correct votes (where nominated_id matches a winner)
-	err = s.db.QueryRow(`
-		SELECT COUNT(*) FROM votes v
-		INNER JOIN winners w ON v.nominated_id = w.nominated_id
+	var points, maxPoints int
+
+	// Calculate max points (sum of points for all categories the user voted in)
+	err := s.db.QueryRow(`
+		SELECT COALESCE(SUM(
+			CASE 
+				WHEN c.name = 'Best Picture' THEN 3
+				WHEN c.name IN ('Actor in a Leading Role', 'Actress in a Leading Role') THEN 2
+				ELSE 1
+			END
+		), 0)
+		FROM votes v
+		INNER JOIN categories c ON v.category_id = c.id
 		WHERE v.user_id = $1
-	`, userID).Scan(&correct)
+	`, userID).Scan(&maxPoints)
 	if err != nil {
-		return 0, 0, fmt.Errorf("count correct votes: %w", err)
+		return 0, 0, fmt.Errorf("calc max points: %w", err)
 	}
-	return correct, total, nil
+
+	// Calculate earned points (correct votes with weighted points)
+	err = s.db.QueryRow(`
+		SELECT COALESCE(SUM(
+			CASE 
+				WHEN c.name = 'Best Picture' THEN 3
+				WHEN c.name IN ('Actor in a Leading Role', 'Actress in a Leading Role') THEN 2
+				ELSE 1
+			END
+		), 0)
+		FROM votes v
+		INNER JOIN winners w ON v.nominated_id = w.nominated_id
+		INNER JOIN categories c ON v.category_id = c.id
+		WHERE v.user_id = $1
+	`, userID).Scan(&points)
+	if err != nil {
+		return 0, 0, fmt.Errorf("calc points: %w", err)
+	}
+
+	return points, maxPoints, nil
 }
 
-// GetAllScores returns scores for all users who have voted, ordered by correct votes descending.
+// GetAllScores returns scores for all users who have voted, ordered by points descending.
+// Points: Best Picture=3, Actor/Actress in Leading Role=2, others=1
 func (s *SQLVoteStore) GetAllScores() ([]UserScore, error) {
 	rows, err := s.db.Query(`
 		SELECT 
 			u.id,
 			u.nickname,
 			COUNT(v.id) AS total_votes,
-			COUNT(w.id) AS correct_votes
+			COUNT(w.id) AS correct_votes,
+			COALESCE(SUM(
+				CASE 
+					WHEN w.id IS NOT NULL THEN
+						CASE 
+							WHEN c.name = 'Best Picture' THEN 3
+							WHEN c.name IN ('Actor in a Leading Role', 'Actress in a Leading Role') THEN 2
+							ELSE 1
+						END
+					ELSE 0
+				END
+			), 0) AS points,
+			COALESCE(SUM(
+				CASE 
+					WHEN c.name = 'Best Picture' THEN 3
+					WHEN c.name IN ('Actor in a Leading Role', 'Actress in a Leading Role') THEN 2
+					ELSE 1
+				END
+			), 0) AS max_points
 		FROM users u
 		INNER JOIN votes v ON u.id = v.user_id
+		INNER JOIN categories c ON v.category_id = c.id
 		LEFT JOIN winners w ON v.nominated_id = w.nominated_id
 		GROUP BY u.id, u.nickname
-		ORDER BY correct_votes DESC, total_votes DESC
+		ORDER BY points DESC, correct_votes DESC, total_votes DESC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("get all scores: %w", err)
@@ -106,7 +149,7 @@ func (s *SQLVoteStore) GetAllScores() ([]UserScore, error) {
 	var scores []UserScore
 	for rows.Next() {
 		var s UserScore
-		if err := rows.Scan(&s.UserID, &s.Nickname, &s.TotalVotes, &s.CorrectVotes); err != nil {
+		if err := rows.Scan(&s.UserID, &s.Nickname, &s.TotalVotes, &s.CorrectVotes, &s.Points, &s.MaxPoints); err != nil {
 			return nil, fmt.Errorf("scan score: %w", err)
 		}
 		scores = append(scores, s)

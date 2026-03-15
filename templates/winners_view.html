@@ -180,6 +180,11 @@
       nominateds = await nomRes.json() || [];
       winners = await winRes.json() || [];
 
+      // Sort categories by sequence_order
+      categories.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+
+      console.log('Loaded:', { categories: categories.length, nominateds: nominateds.length, winners: winners.length });
+
       render();
     } catch(e) {
       document.getElementById('msg').textContent = 'Error: ' + e.message;
@@ -188,11 +193,11 @@
   }
 
   function getWinnerForNominated(nominatedId) {
-    return winners.find(w => w.nominated_id === nominatedId);
+    return winners.find(w => String(w.nominated_id) === String(nominatedId));
   }
 
   function getNominatedsForCategory(categoryId) {
-    return nominateds.filter(n => n.category_id === categoryId);
+    return nominateds.filter(n => String(n.category_id) === String(categoryId));
   }
 
   function render() {
@@ -210,14 +215,22 @@
 
     categories.forEach(cat => {
       const catNominateds = getNominatedsForCategory(cat.id);
-      if (catNominateds.length === 0) return;
-
+      
       const section = document.createElement('div');
       section.className = 'category-section';
 
       const title = document.createElement('h2');
-      title.textContent = cat.name;
+      title.textContent = cat.name + (catNominateds.length === 0 ? ' (no nominees)' : '');
       section.appendChild(title);
+
+      if (catNominateds.length === 0) {
+        const empty = document.createElement('p');
+        empty.style.color = 'var(--muted)';
+        empty.textContent = 'No nominees found for this category.';
+        section.appendChild(empty);
+        content.appendChild(section);
+        return;
+      }
 
       const grid = document.createElement('div');
       grid.className = 'nominateds-grid';
