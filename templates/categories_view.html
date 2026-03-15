@@ -98,6 +98,22 @@
     box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
   }
 
+  .countdown {
+    margin-top: 24px;
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .countdown-label { color: var(--muted); font-size: 0.9rem }
+  .countdown-time { font-size: 1.3rem; font-weight: 700; color: var(--yellow) }
+  .countdown-closed { color: #ff6b6b }
+
   a.card-link{ color:inherit; text-decoration:none }
   @media (max-width:520px) { body { padding:1rem } .grid { gap:1rem } }
   </style>
@@ -109,6 +125,10 @@
       <div>
         <button id="btnLogout" style="display:none">Logout</button>
       </div>
+    </div>
+    <div id="countdown" class="countdown" style="display:none">
+      <span class="countdown-label">Voting closes in:</span>
+      <span id="countdownTime" class="countdown-time">--:--:--</span>
     </div>
     <p id="msg">Fetching categories...</p>
     <div id="list" class="grid" role="list"></div>
@@ -210,6 +230,41 @@
     })();
 
     fetchCategories();
+
+    // Countdown based on server deadline
+    (async function startCountdown() {
+      try {
+        const res = await fetch('/deadline', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const deadline = new Date(data.deadline);
+        const countdownEl = el('countdown');
+        const timeEl = el('countdownTime');
+        countdownEl.style.display = 'flex';
+
+        function update() {
+          const now = new Date();
+          const diff = deadline - now;
+          if (diff <= 0) {
+            timeEl.textContent = 'Voting is closed';
+            timeEl.classList.add('countdown-closed');
+            return;
+          }
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+          const mins = Math.floor((diff / (1000 * 60)) % 60);
+          const secs = Math.floor((diff / 1000) % 60);
+          let str = '';
+          if (days > 0) str += days + 'd ';
+          str += String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+          timeEl.textContent = str;
+        }
+        update();
+        setInterval(update, 1000);
+      } catch (e) {
+        // ignore - countdown won't show
+      }
+    })();
   </script>
 </body>
 </html>

@@ -68,3 +68,17 @@ type VoteStore interface {
 	// ListByUser returns votes for a given user UUID.
 	ListByUser(userID string) ([]models.Vote, error)
 }
+
+// WinnerStore defines storage operations for winners.
+type WinnerStore interface {
+	// Insert inserts a winner and returns its assigned ID.
+	Insert(w *models.Winner) (string, error)
+	// Get returns a winner by id or nil if not found.
+	Get(id string) (*models.Winner, error)
+	// GetByNominated returns a winner by nominated_id or nil if not found.
+	GetByNominated(nominatedID string) (*models.Winner, error)
+	// List returns all winners.
+	List() ([]models.Winner, error)
+	// Delete removes a winner by id.
+	Delete(id string) error
+}

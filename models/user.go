@@ -9,5 +9,6 @@ type User struct {
 	Bio          *string   `json:"bio,omitempty"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
+	Role         string    `json:"role,omitempty"`
 	CreatedAt    time.Time `json:"created_at,omitempty"`
 }

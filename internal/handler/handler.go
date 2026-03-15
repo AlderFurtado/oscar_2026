@@ -17,12 +17,13 @@ type Handler struct {
 	nominatedStore store.NominatedStore
 	userStore      store.UserStore
 	voteStore      store.VoteStore
+	winnerStore    store.WinnerStore
 	nominatedTpl   *template.Template
 	jwtSecret      string
 }
 
-func New(m store.MovieStore, c store.CategoryStore, n store.NominatedStore, u store.UserStore, v store.VoteStore, tpl *template.Template, jwtSecret string) *Handler {
-	return &Handler{movieStore: m, categoryStore: c, nominatedStore: n, userStore: u, voteStore: v, nominatedTpl: tpl, jwtSecret: jwtSecret}
+func New(m store.MovieStore, c store.CategoryStore, n store.NominatedStore, u store.UserStore, v store.VoteStore, w store.WinnerStore, tpl *template.Template, jwtSecret string) *Handler {
+	return &Handler{movieStore: m, categoryStore: c, nominatedStore: n, userStore: u, voteStore: v, winnerStore: w, nominatedTpl: tpl, jwtSecret: jwtSecret}
 }
 
 // AddMovie accepts POST /add_movie with JSON body and inserts into storage.
@@ -739,4 +740,113 @@ func (h *Handler) GetCategory(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(c)
+}
+
+// ServeWinnersView renders the admin page for selecting winners by category.
+func (h *Handler) ServeWinnersView(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	tpl, err := template.ParseFiles("templates/winners_view.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, "template error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.Execute(w, nil); err != nil {
+		http.Error(w, "template render error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// AddWinner handles POST /add_winner to set a winner for a nominated.
+func (h *Handler) AddWinner(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.validateCSRF(r) {
+		http.Error(w, "invalid csrf token", http.StatusForbidden)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	var req struct {
+		NominatedID string `json:"nominated_id"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.NominatedID == "" {
+		http.Error(w, "nominated_id is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if nominated exists
+	nominated, err := h.nominatedStore.Get(req.NominatedID)
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if nominated == nil {
+		http.Error(w, "nominated not found", http.StatusNotFound)
+		return
+	}
+
+	// Insert winner
+	winner := &models.Winner{NominatedID: req.NominatedID}
+	id, err := h.winnerStore.Insert(winner)
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	winner.ID = id
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(winner)
+}
+
+// DeleteWinner handles DELETE /delete_winner?id=<id> to remove a winner.
+func (h *Handler) DeleteWinner(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.validateCSRF(r) {
+		http.Error(w, "invalid csrf token", http.StatusForbidden)
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	if err := h.winnerStore.Delete(id); err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListWinners handles GET /winners to list all winners.
+func (h *Handler) ListWinners(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	winners, err := h.winnerStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(winners)
 }

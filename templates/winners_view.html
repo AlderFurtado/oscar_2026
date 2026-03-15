@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Select Winners</title>
+  <style>
+  :root{
+    --muted:#9ca3af;
+    --accent:#f3f4f6;
+    --yellow:#f59e0b;
+    --yellow-strong:#fb923c;
+    --green:#10b981;
+    --green-strong:#059669;
+    --footer-safe: 104px;
+    --card-shadow: 0 12px 30px rgba(2,6,23,0.6);
+    --background-1:#071121;
+    --background-2:#0b1224;
+    --card-bg: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, Roboto, Arial;
+    padding: 2.5rem;
+    margin: 0;
+    color: var(--accent);
+    background: linear-gradient(135deg, var(--background-1) 0%, var(--background-2) 50%, #081628 100%);
+    background-size: 300% 300%;
+    animation: bgShift 18s ease infinite;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding-bottom: var(--footer-safe); }
+  .top { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem }
+  h1 { margin:0; font-size:1.6rem; letter-spacing:0.6px }
+  h2 { margin:0 0 1rem 0; font-size:1.2rem; color: var(--yellow); }
+
+  button {
+    padding:0.5rem 0.9rem;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.06);
+    background:transparent;
+    color:var(--accent);
+    cursor:pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(2,6,23,0.45); }
+
+  .msg { margin-top:1rem; padding:0.75rem; border-radius:10px; background: rgba(255,255,255,0.02); }
+  .msg.ok { background: rgba(158,230,176,0.08); color:#9ee6b0 }
+  .msg.err { background: rgba(255,20,60,0.06); color:#ffb4c6 }
+
+  .category-section {
+    background: var(--card-bg);
+    border-radius:14px;
+    padding:1.2rem;
+    margin-bottom:1.5rem;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(255,255,255,0.03);
+  }
+
+  .nominateds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+
+  .nominated-card {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform .25s ease, box-shadow .25s ease;
+    border: 3px solid transparent;
+    background-color: rgba(0,0,0,0.2);
+    background-size: cover;
+    background-position: center;
+  }
+  .nominated-card:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 16px 32px rgba(0,0,0,0.4); }
+  .nominated-card.winner { border-color: var(--green); box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+
+  .nominated-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.8rem;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%);
+  }
+  .nominated-name { font-weight: 700; font-size: 0.9rem; }
+  .nominated-category { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+  .winner-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: var(--green);
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .btn-select {
+    background: linear-gradient(180deg, var(--yellow) 0%, var(--yellow-strong) 100%);
+    color:#071021;
+    border:none;
+    padding:0.4rem 0.7rem;
+    border-radius:8px;
+    cursor:pointer;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+  .btn-select:hover { transform: scale(1.02); }
+
+  .btn-remove {
+    background: linear-gradient(180deg, #ef4444, #dc2626);
+    color: white;
+    border:none;
+    padding:0.4rem 0.7rem;
+    border-radius:8px;
+    cursor:pointer;
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+  .btn-remove:hover { transform: scale(1.02); }
+
+  @media (max-width:520px) { 
+    body { padding:1rem } 
+    .nominateds-grid { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+  }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <h1>🏆 Select Winners</h1>
+      <button id="btnBack" onclick="history.back()">Back</button>
+    </div>
+    <p id="msg">Loading categories and nominateds...</p>
+    <div id="content"></div>
+  </div>
+
+  {{template "footer.html"}}
+
+  <script>
+  const JWT = document.cookie.split('; ').find(r=>r.startsWith('token='))?.split('=')[1] || '';
+  const CSRF = document.cookie.split('; ').find(r=>r.startsWith('csrf_token='))?.split('=')[1] || '';
+
+  let categories = [];
+  let nominateds = [];
+  let winners = [];
+
+  async function load() {
+    try {
+      const [catRes, nomRes, winRes] = await Promise.all([
+        fetch('/categories', { headers: { Authorization: 'Bearer ' + JWT } }),
+        fetch('/nominateds', { headers: { Authorization: 'Bearer ' + JWT } }),
+        fetch('/winners', { headers: { Authorization: 'Bearer ' + JWT } })
+      ]);
+
+      if (!catRes.ok || !nomRes.ok || !winRes.ok) {
+        throw new Error('Failed to load data');
+      }
+
+      categories = await catRes.json() || [];
+      nominateds = await nomRes.json() || [];
+      winners = await winRes.json() || [];
+
+      render();
+    } catch(e) {
+      document.getElementById('msg').textContent = 'Error: ' + e.message;
+      document.getElementById('msg').className = 'msg err';
+    }
+  }
+
+  function getWinnerForNominated(nominatedId) {
+    return winners.find(w => w.nominated_id === nominatedId);
+  }
+
+  function getNominatedsForCategory(categoryId) {
+    return nominateds.filter(n => n.category_id === categoryId);
+  }
+
+  function render() {
+    const content = document.getElementById('content');
+    const msg = document.getElementById('msg');
+
+    if (categories.length === 0) {
+      msg.textContent = 'No categories found.';
+      msg.className = 'msg';
+      return;
+    }
+
+    msg.style.display = 'none';
+    content.innerHTML = '';
+
+    categories.forEach(cat => {
+      const catNominateds = getNominatedsForCategory(cat.id);
+      if (catNominateds.length === 0) return;
+
+      const section = document.createElement('div');
+      section.className = 'category-section';
+
+      const title = document.createElement('h2');
+      title.textContent = cat.name;
+      section.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'nominateds-grid';
+
+      catNominateds.forEach(nom => {
+        const winner = getWinnerForNominated(nom.id);
+        const card = document.createElement('div');
+        card.className = 'nominated-card' + (winner ? ' winner' : '');
+        if (nom.url_image) {
+          card.style.backgroundImage = `url(${nom.url_image})`;
+        }
+
+        let html = '';
+        if (winner) {
+          html += '<div class="winner-badge">Winner</div>';
+        }
+        html += `<div class="nominated-overlay">
+          <div class="nominated-name">${nom.name}</div>
+          <div class="nominated-category">${cat.name}</div>`;
+
+        if (winner) {
+          html += `<button class="btn-remove" onclick="removeWinner('${winner.id}')">Remove Winner</button>`;
+        } else {
+          html += `<button class="btn-select" onclick="selectWinner('${nom.id}')">Select as Winner</button>`;
+        }
+        html += '</div>';
+
+        card.innerHTML = html;
+        grid.appendChild(card);
+      });
+
+      section.appendChild(grid);
+      content.appendChild(section);
+    });
+  }
+
+  async function selectWinner(nominatedId) {
+    try {
+      const res = await fetch('/add_winner', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + JWT,
+          'X-CSRF-Token': CSRF
+        },
+        body: JSON.stringify({ nominated_id: nominatedId })
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+
+      const newWinner = await res.json();
+      winners.push(newWinner);
+      render();
+    } catch(e) {
+      alert('Error selecting winner: ' + e.message);
+    }
+  }
+
+  async function removeWinner(winnerId) {
+    try {
+      const res = await fetch('/delete_winner?id=' + winnerId, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': 'Bearer ' + JWT,
+          'X-CSRF-Token': CSRF
+        }
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+
+      winners = winners.filter(w => w.id !== winnerId);
+      render();
+    } catch(e) {
+      alert('Error removing winner: ' + e.message);
+    }
+  }
+
+  load();
+  </script>
+</body>
+</html>

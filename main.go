@@ -41,6 +41,7 @@ func main() {
 	ns := store.NewSQLNominated(database)
 	us := store.NewSQLUser(database)
 	vs := store.NewSQLVote(database)
+	ws := store.NewSQLWinnerStore(database)
 	// parse and cache nominated form template at startup
 	// try env var TEMPLATE_DIR, then relative "templates/", then absolute "/templates/"
 	var tpl *template.Template
@@ -62,7 +63,7 @@ func main() {
 		log.Fatalf("failed to parse template from paths %v: %v", tryPaths, parseErr)
 	}
 	jwtSecret := envOr("JWT_SECRET", "devsecret")
-	h := handler.New(s, cs, ns, us, vs, tpl, jwtSecret)
+	h := handler.New(s, cs, ns, us, vs, ws, tpl, jwtSecret)
 
 	http.HandleFunc("/add_movie", h.AddMovie)
 	http.HandleFunc("/add_movies", h.AddMovies)
@@ -117,6 +118,15 @@ func main() {
 	// voting routes (require auth)
 	http.HandleFunc("/add_vote", h.RequireAuth(h.AddVote))
 	http.HandleFunc("/votes", h.RequireAuth(h.ListVotes))
+
+	// winner routes (admin)
+	http.HandleFunc("/winners/view", h.ServeWinnersView)
+	http.HandleFunc("/add_winner", h.AddWinner)
+	http.HandleFunc("/delete_winner", h.DeleteWinner)
+	http.HandleFunc("/winners", h.ListWinners)
+
+	// deadline endpoint (public)
+	http.HandleFunc("/deadline", h.GetDeadline)
 
 	// health check
 	http.HandleFunc("/healthz", h.Healthz)

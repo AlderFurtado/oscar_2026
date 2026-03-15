@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"votacao/models"
 )
@@ -15,6 +16,19 @@ func (h *Handler) AddVote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	// Voting deadline: votes allowed only until 12:00 PM (noon) UTC-3 on March 15, 2026
+	// After that time, voting is closed.
+	loc, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		// fallback: use fixed offset UTC-3
+		loc = time.FixedZone("UTC-3", -3*60*60)
+	}
+	if time.Now().In(loc).After(VotingDeadline) {
+		http.Error(w, "voting is closed", http.StatusForbidden)
+		return
+	}
+
 	uid, ok := GetUserIDFromContext(r.Context())
 	if !ok || uid == "" {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -97,6 +111,40 @@ func (h *Handler) ListVotes(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// VotingDeadline is the shared deadline used by AddVote and GetDeadline.
+var VotingDeadline = func() time.Time {
+	loc, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		loc = time.FixedZone("UTC-3", -3*60*60)
+	}
+	return time.Date(2026, time.March, 15, 12, 0, 0, 0, loc)
+}()
+
+// GetDeadline returns the voting deadline as JSON so the frontend can display a countdown.
+// GET /deadline -> { "deadline": "2026-03-15T00:00:00-03:00", "server_time": "...", "closed": bool }
+func (h *Handler) GetDeadline(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	loc, _ := time.LoadLocation("America/Sao_Paulo")
+	if loc == nil {
+		loc = time.FixedZone("UTC-3", -3*60*60)
+	}
+	now := time.Now().In(loc)
+	out := struct {
+		Deadline   string `json:"deadline"`
+		ServerTime string `json:"server_time"`
+		Closed     bool   `json:"closed"`
+	}{
+		Deadline:   VotingDeadline.Format(time.RFC3339),
+		ServerTime: now.Format(time.RFC3339),
+		Closed:     now.After(VotingDeadline),
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)
