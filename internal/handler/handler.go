@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"sort"
 
 	"votacao/internal/store"
 	"votacao/models"
@@ -437,6 +438,91 @@ func (h *Handler) ListNominatedsByCategory(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(res)
+}
+
+// NomineesByCategory returns all nominees grouped by categories.
+// GET /nominees_by_category -> { categories: [{ id, name, sequence_order, nominees: [...] }, ...] }
+func (h *Handler) NomineesByCategory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get all categories
+	categories, err := h.categoryStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Get all nominees
+	allNominees, err := h.nominatedStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Get all movies for movie name lookup
+	allMovies, err := h.movieStore.List()
+	if err != nil {
+		http.Error(w, "db error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	movieByID := make(map[string]string)
+	for _, m := range allMovies {
+		movieByID[m.ID] = m.Title
+	}
+
+	// Group nominees by category_id
+	nomineesByCat := make(map[string][]models.Nominated)
+	for _, n := range allNominees {
+		nomineesByCat[n.CategoryID] = append(nomineesByCat[n.CategoryID], n)
+	}
+
+	// Build response
+	type NomineeOut struct {
+		ID        string `json:"id"`
+		Name      string `json:"name"`
+		MovieID   string `json:"movie_id"`
+		MovieName string `json:"movie_name,omitempty"`
+		Image     string `json:"image,omitempty"`
+	}
+
+	type CategoryWithNominees struct {
+		ID            string       `json:"id"`
+		Name          string       `json:"name"`
+		SequenceOrder int          `json:"sequence_order"`
+		Nominees      []NomineeOut `json:"nominees"`
+	}
+
+	result := make([]CategoryWithNominees, 0, len(categories))
+	for _, cat := range categories {
+		catNominees := nomineesByCat[cat.ID]
+		nominees := make([]NomineeOut, 0, len(catNominees))
+		for _, n := range catNominees {
+			nominees = append(nominees, NomineeOut{
+				ID:        n.ID,
+				Name:      n.Name,
+				MovieID:   n.MovieID,
+				MovieName: movieByID[n.MovieID],
+				Image:     n.UrlImage,
+			})
+		}
+		result = append(result, CategoryWithNominees{
+			ID:            cat.ID,
+			Name:          cat.Name,
+			SequenceOrder: cat.SequenceOrder,
+			Nominees:      nominees,
+		})
+	}
+
+	// Sort by sequence_order
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SequenceOrder < result[j].SequenceOrder
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // ServeNominatedForm renders an HTML form to create a nomination by selecting

@@ -160,30 +160,24 @@
   const JWT = document.cookie.split('; ').find(r=>r.startsWith('token='))?.split('=')[1] || '';
   const CSRF = document.cookie.split('; ').find(r=>r.startsWith('csrf_token='))?.split('=')[1] || '';
 
-  let categories = [];
-  let nominateds = [];
+  let categoriesWithNominees = [];
   let winners = [];
 
   async function load() {
     try {
-      const [catRes, nomRes, winRes] = await Promise.all([
-        fetch('/categories', { headers: { Authorization: 'Bearer ' + JWT } }),
-        fetch('/nominateds', { headers: { Authorization: 'Bearer ' + JWT } }),
+      const [dataRes, winRes] = await Promise.all([
+        fetch('/nominees_by_category', { headers: { Authorization: 'Bearer ' + JWT } }),
         fetch('/winners', { headers: { Authorization: 'Bearer ' + JWT } })
       ]);
 
-      if (!catRes.ok || !nomRes.ok || !winRes.ok) {
+      if (!dataRes.ok || !winRes.ok) {
         throw new Error('Failed to load data');
       }
 
-      categories = await catRes.json() || [];
-      nominateds = await nomRes.json() || [];
+      categoriesWithNominees = await dataRes.json() || [];
       winners = await winRes.json() || [];
 
-      // Sort categories by sequence_order
-      categories.sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
-
-      console.log('Loaded:', { categories: categories.length, nominateds: nominateds.length, winners: winners.length });
+      console.log('Loaded:', { categories: categoriesWithNominees.length, winners: winners.length });
 
       render();
     } catch(e) {
@@ -196,15 +190,11 @@
     return winners.find(w => String(w.nominated_id) === String(nominatedId));
   }
 
-  function getNominatedsForCategory(categoryId) {
-    return nominateds.filter(n => String(n.category_id) === String(categoryId));
-  }
-
   function render() {
     const content = document.getElementById('content');
     const msg = document.getElementById('msg');
 
-    if (categories.length === 0) {
+    if (categoriesWithNominees.length === 0) {
       msg.textContent = 'No categories found.';
       msg.className = 'msg';
       return;
@@ -213,17 +203,17 @@
     msg.style.display = 'none';
     content.innerHTML = '';
 
-    categories.forEach(cat => {
-      const catNominateds = getNominatedsForCategory(cat.id);
+    categoriesWithNominees.forEach(cat => {
+      const nominees = cat.nominees || [];
       
       const section = document.createElement('div');
       section.className = 'category-section';
 
       const title = document.createElement('h2');
-      title.textContent = cat.name + (catNominateds.length === 0 ? ' (no nominees)' : '');
+      title.textContent = cat.name + (nominees.length === 0 ? ' (no nominees)' : '');
       section.appendChild(title);
 
-      if (catNominateds.length === 0) {
+      if (nominees.length === 0) {
         const empty = document.createElement('p');
         empty.style.color = 'var(--muted)';
         empty.textContent = 'No nominees found for this category.';
@@ -235,12 +225,12 @@
       const grid = document.createElement('div');
       grid.className = 'nominateds-grid';
 
-      catNominateds.forEach(nom => {
+      nominees.forEach(nom => {
         const winner = getWinnerForNominated(nom.id);
         const card = document.createElement('div');
         card.className = 'nominated-card' + (winner ? ' winner' : '');
-        if (nom.url_image) {
-          card.style.backgroundImage = `url(${nom.url_image})`;
+        if (nom.image) {
+          card.style.backgroundImage = `url(${nom.image})`;
         }
 
         let html = '';
@@ -249,7 +239,7 @@
         }
         html += `<div class="nominated-overlay">
           <div class="nominated-name">${nom.name}</div>
-          <div class="nominated-category">${cat.name}</div>`;
+          <div class="nominated-category">${nom.movie_name || cat.name}</div>`;
 
         if (winner) {
           html += `<button class="btn-remove" onclick="removeWinner('${winner.id}')">Remove Winner</button>`;
