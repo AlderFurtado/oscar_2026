@@ -2,6 +2,7 @@ package models
 
 // Category represents a simple category with UUID and Name.
 type Category struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name"`
+	ID            string `json:"id,omitempty"`
+	Name          string `json:"name"`
+	SequenceOrder int    `json:"sequence_order,omitempty"`
 }

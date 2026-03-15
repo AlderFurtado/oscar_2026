@@ -16,7 +16,7 @@ func NewSQLCategory(db *sql.DB) *SQLCategoryStore { return &SQLCategoryStore{db:
 
 func (s *SQLCategoryStore) Insert(c *models.Category) (string, error) {
 	var id string
-	err := s.db.QueryRow("INSERT INTO categories (name) VALUES ($1) RETURNING id", c.Name).Scan(&id)
+	err := s.db.QueryRow("INSERT INTO categories (name, sequence_order) VALUES ($1, $2) RETURNING id", c.Name, c.SequenceOrder).Scan(&id)
 	if err != nil {
 		return "", fmt.Errorf("insert category: %w", err)
 	}
@@ -31,7 +31,7 @@ func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	stmt, err := tx.Prepare("INSERT INTO categories (name) VALUES ($1) RETURNING id")
+	stmt, err := tx.Prepare("INSERT INTO categories (name, sequence_order) VALUES ($1, $2) RETURNING id")
 	if err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("prepare: %w", err)
@@ -40,7 +40,7 @@ func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]string, error) {
 	ids := make([]string, 0, len(cs))
 	for _, c := range cs {
 		var id string
-		if err := stmt.QueryRow(c.Name).Scan(&id); err != nil {
+		if err := stmt.QueryRow(c.Name, c.SequenceOrder).Scan(&id); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("insert categories: %w", err)
 		}
@@ -54,8 +54,8 @@ func (s *SQLCategoryStore) InsertMany(cs []models.Category) ([]string, error) {
 
 func (s *SQLCategoryStore) Get(id string) (*models.Category, error) {
 	var c models.Category
-	row := s.db.QueryRow("SELECT id, name FROM categories WHERE id=$1", id)
-	if err := row.Scan(&c.ID, &c.Name); err != nil {
+	row := s.db.QueryRow("SELECT id, name, COALESCE(sequence_order, 0) FROM categories WHERE id=$1", id)
+	if err := row.Scan(&c.ID, &c.Name, &c.SequenceOrder); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -65,7 +65,7 @@ func (s *SQLCategoryStore) Get(id string) (*models.Category, error) {
 }
 
 func (s *SQLCategoryStore) List() ([]models.Category, error) {
-	rows, err := s.db.Query("SELECT id, name FROM categories ORDER BY id DESC LIMIT 100")
+	rows, err := s.db.Query("SELECT id, name, COALESCE(sequence_order, 0) FROM categories ORDER BY sequence_order ASC, id DESC LIMIT 100")
 	if err != nil {
 		return nil, fmt.Errorf("list categories: %w", err)
 	}
@@ -73,7 +73,7 @@ func (s *SQLCategoryStore) List() ([]models.Category, error) {
 	var out []models.Category
 	for rows.Next() {
 		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.SequenceOrder); err != nil {
 			return nil, fmt.Errorf("scan category: %w", err)
 		}
 		out = append(out, c)
